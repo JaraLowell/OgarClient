@@ -5,20 +5,9 @@
     Date.now || (Date.now = function() {
         return (+new Date).getTime();
     });
-
-    Array.prototype.remove = function(a) {
-        let i = this.indexOf(a);
-        if (i !== -1) {
-            this.splice(i, 1);
-            return true;
-        }
-        return false;
-    };
-
     Array.prototype.peek = function() {
         return this[this.length - 1];
     };
-
     $(document).ready(function() {
         $('body').append('<canvas id="nodes"></canvas>');
         $('#nodes').css({
@@ -35,29 +24,28 @@
             'display': 'none'
         });
     });
-
     var CONNECT_TO
       , SKIN_URL = "./skins/"
-      , BORDER_DEFAULT = {top: -2E3, left: -2E3, right: 2E3, bottom: 2E3 }
+      , USE_HTTPS = "https:" == wHandle.location.protocol
+      , BORDER_DEFAULT = {top: -2E3, left: -2E3, right: 2E3, bottom: 2E3}
       , PI_2 = Math.PI * 2
+      , SEND_104 = new Uint8Array([104, 1, 0, 0, 0])
       , SEND_254 = new Uint8Array([254, 6, 0, 0, 0])
       , SEND_255 = new Uint8Array([255, 1, 0, 0, 0])
-      , SEND_104 = new Uint8Array([104, 1, 0, 0, 0])
-      , UINT8_CACHE = {
-              1: new Uint8Array([1]),
-             17: new Uint8Array([17]),
-             21: new Uint8Array([21]),
-             18: new Uint8Array([18]),
-             19: new Uint8Array([19]),
-             22: new Uint8Array([22]),
-             23: new Uint8Array([23]),
-             24: new Uint8Array([24]),
-            254: new Uint8Array([254])
-        }
       , FPS_MAXIMUM = 1000
       , ws = null
-      , disconnectDelay = 1;
-
+      , touches = []
+      , disconnectDelay = 1
+      , UINT8_CACHE = {
+            1:  new Uint8Array([1]),
+            17: new Uint8Array([17]),
+            21: new Uint8Array([21]),
+            18: new Uint8Array([18]),
+            19: new Uint8Array([19]),
+            22: new Uint8Array([22]),
+            23: new Uint8Array([23]),
+            24: new Uint8Array([24]),
+            254:new Uint8Array([254]) };
 
     function Disconnect() {
         if (!ws) return;
@@ -72,26 +60,25 @@
         }
         ws = null;
         resetGameVariables();
-    }
-
+    };
     function resetGameVariables() {
         nodesID = { };
         nodes = [];
         myNodes = [];
         deadNodes = [];
+        qTree = null;
         leaderboard = [];
         leaderboardType = "none";
         userScore = 0;
         centerX = 0;
         centerY = 0;
         lastMessageTime = -1;
-        latency = Infinity;
+        latency = -1;
         _cX = 0;
         _cY = 0;
         _cZoom = 1;
         mapCenterSet = false;
         border = BORDER_DEFAULT;
-        knownSkins = [];
         loadedSkins = [];
         viewZoom = 1;
         userName = "";
@@ -101,20 +88,18 @@
         serverStats = null;
         leaderboardCanvas = null;
         serverStatCanvas = null;
-    }
-
+    };
     function Connect(to) {
         if (ws) Disconnect();
         wjQuery("#connecting").show();
-        ws = new WebSocket("ws://" + (CONNECT_TO = to));
+        ws = new WebSocket((USE_HTTPS ? "wss://" : "ws://") + (CONNECT_TO = to));
         ws.binaryType = "arraybuffer";
         ws.onopen = WsOpen;
         ws.onmessage = WsMessage;
         ws.onerror = WsError;
         ws.onclose = WsClose;
         log.debug("Connecting to " + to);
-    }
-
+    };
     function WsOpen() {
         disconnectDelay = 1;
         wjQuery("#connecting").hide();
@@ -122,6 +107,7 @@
         WsSend(SEND_255);
         serverVersion = "Unknown";
         log.debug("Connected to " + CONNECT_TO);
+        log.debug("HTTPS: " + USE_HTTPS);
         chatMessages.push({
             server: false,
             admin: false,
@@ -133,17 +119,15 @@
         });
         lastMessageTime = Date.now();
         drawChat();
-        if(!touchable) {
+        if(!settings.mobile) {
             $('#nodes').show();
             WsSend(SEND_104);
         }
-    }
-
+    };
     function WsMessage(data) {
         var reader = new Reader(new DataView(data.data), 0, true),
             i, count,
             packet = reader.getUint8();
-
         switch (packet) {
             case 0x20:
                 // New cell of mine
@@ -160,9 +144,9 @@
                     nameColor = (r << 16 | g << 8 | b).toString(16);
                 while (nameColor.length < 6) nameColor = '0' + nameColor;
                 nameColor = '#' + nameColor;
-                name = reader.getStringUTF8();
-                message = reader.getStringUTF8();
-                chatAlphaWait += Math.max(2000, 1000 + message.length * 100);
+                name = reader.getStringUCS();
+                message = reader.getStringUCS();
+                chatAlphaWait += Math.max(5000, 1000 + message.length * 100);
                 chatMessages.push({
                     server: !!(flags & 0x80),
                     admin: !!(flags & 0x40),
@@ -287,12 +271,13 @@
 
                     if (updColor) {
                         color = "";
-                        for (var r = reader.getUint8(), g = reader.getUint8(), b = reader.getUint8(), color = (r << 16 | g << 8 | b).toString(16); 6 > color.length;) color = "0" + color;
+                        for (var r = reader.getUint8(), g = reader.getUint8(), b = reader.getUint8(),
+                            color = (r << 16 | g << 8 | b).toString(16); 6 > color.length;) color = "0" + color;
                         color = "#" + color;
                     }
 
                     if (updSkin) skin = reader.getStringUTF8();
-                    if (updName) name = reader.getStringUTF8() || "An unnamed cell";
+                    if (updName) name = reader.getStringUTF8();
 
                     if (nodesID.hasOwnProperty(id)) {
                         node = nodesID[id];
@@ -300,8 +285,8 @@
                         node.ny = y;
                         node.nSize = size;
                         updColor && (node.setColor(color));
-                        updName && (node.setName(name));
-                        updSkin && (node.skin = skin);
+                        updName && name && (node.setName(name));
+                        updSkin && skin && (node.setSkin(skin));
                         node.updateStamp = time;
                     } else {
                         node = new Cell(id, x, y, size, name || "", color || "#FFFFFF", skin || "", time, flags);
@@ -328,7 +313,6 @@
                         var _nCache = document.createElement('canvas');
                         var pCtx = _nCache.getContext('2d'),
                             lW = this.nSize > 20 ? Math.max(this.nSize * .01, 10) : 0, sz;
-
                         _nCache.width = (sz = node.nSize + lW) * 2;
                         _nCache.height = sz * 2;
                         pCtx.lineWidth = lW;
@@ -337,7 +321,7 @@
                         pCtx.strokeStyle = node.strokeColor;
 
                         pCtx.beginPath();
-                        pCtx.arc(sz, sz, node.nSize - lW, 0, PI_2, false);
+                        pCtx.arc(sz, sz, node.nSize - lW, 0, 2 * Math.PI, false);
                         pCtx.fill();
                         pCtx.stroke();
                         pCtx.closePath();
@@ -357,47 +341,47 @@
                 _cZoom = reader.getFloat32();
                 break;
             case 0x68:
-                // Minimap Draw
-                var k = border.right * 2;
-                var j = border.bottom * 2;
-                var a = document.getElementById("nodes");
-                a.width = 200;
-                a.height = 200;
-                var mCtx = a.getContext("2d");
-                mCtx.clearRect(0, 0, 200, 200);
-                mCtx.globalAlpha = 1;
-                while (1) {
-                    var id = reader.getUint32();
-                    if (0 === id) break;
-                    var posx = 200 * ( border.right + reader.getInt32() ) / k;
-                    var posy = 200 * ( border.bottom + reader.getInt32() ) / j;
-                    var size = reader.getUint16() / (k / 200);
-                    var color = "";
-                    for (var r = reader.getUint8(), g = reader.getUint8(), b = reader.getUint8(), color = (r << 16 | g << 8 | b).toString(16); 6 > color.length;) color = "0" + color;
-                    color = "#" + color;
-                    var tossaway = reader.getUint8();
-                    tossaway = reader.getUint16();
-                    if(size < 1.8) size = 1.8;
-                    mCtx.beginPath();
-                    mCtx.arc(posx, posy, size, 0, PI_2, false);
-                    mCtx.strokeStyle = "#000000";
-                    mCtx.fillStyle = color;
-                    mCtx.fill()
-                    mCtx.lineWidth = 0.75;
-                    mCtx.stroke();
-                }
+                var temp = setTimeout(function () {
+                    // Minimap Draw
+                    var k = border.right * 2;
+                    var j = border.bottom * 2;
+                    var a = document.getElementById("nodes");
+                    a.width = 200;
+                    a.height = 200;
+                    var mCtx = a.getContext("2d");
+                    mCtx.clearRect(0, 0, 200, 200);
+                    mCtx.globalAlpha = 1;
+                    while (1) {
+                        var id = reader.getUint32();
+                        if (0 === id) break;
+                        var posx = 200 * ( border.right + reader.getInt32() ) / k;
+                        var posy = 200 * ( border.bottom + reader.getInt32() ) / j;
+                        var size = reader.getUint16() / (k / 200);
+                        var color = "";
+                        for (var r = reader.getUint8(), g = reader.getUint8(), b = reader.getUint8(), color = (r << 16 | g << 8 | b).toString(16); 6 > color.length;) color = "0" + color;
+                        color = "#" + color;
+                        var tossaway = reader.getUint8();
+                        tossaway = reader.getUint16();
+                        if(size < 1.8) size = 1.8;
+                        mCtx.beginPath();
+                        mCtx.arc(posx, posy, size, 0, PI_2, false);
+                        mCtx.strokeStyle = "#000000";
+                        mCtx.fillStyle = color;
+                        mCtx.fill()
+                        mCtx.lineWidth = 0.75;
+                        mCtx.stroke();
+                    }
+                }.bind(this), 0);
                 break;
             default:
                 log.err("Got unexpected packet ID " + packet)
                 Disconnect();
         }
-    }
-
+    };
     function WsError(e) {
         log.warn("Connection error");
         log.debug(e);
-    }
-
+    };
     function WsClose() {
         log.debug("Disconnected");
         Disconnect();
@@ -405,15 +389,13 @@
             if (ws) if (ws.readyState === 1) return;
             Connect(CONNECT_TO);
         }, (disconnectDelay *= 1.5) * 1000);
-    }
-
+    };
     function WsSend(data) {
         if (!ws) return;
         if (ws.readyState !== 1) return; // Still connecting
         if (data.build) ws.send(data.build());
         else ws.send(data);
-    }
-
+    };
     function Play(name) {
         log.debug("Playing");
         var writer = new Writer(true);
@@ -421,8 +403,53 @@
         writer.setStringUTF8(name);
         userName = name;
         WsSend(writer);
-    }
-
+    };
+    function onTouchStart(e) {
+        for (var i = 0; i < e.changedTouches.length; i++) {
+            var touch = e.changedTouches[i];
+            if ((leftTouchID < 0) && (touch.clientX < mainCanvas.width / 2)) {
+                leftTouchID = touch.identifier;
+                leftTouchStartPos.reset(touch.clientX, touch.clientY);
+                leftTouchPos.copyFrom(leftTouchStartPos);
+                leftVector.reset(0, 0);
+            }
+            var size = ~~(mainCanvas.width / 7);
+            if ((touch.clientX > mainCanvas.width - size) && (touch.clientY > mainCanvas.height - size)) {
+                // Send Press Space
+                WsSend(UINT8_CACHE[17]);
+            }
+            if ((touch.clientX > mainCanvas.width - size) && (touch.clientY > mainCanvas.height - 2 * size - 10) && (touch.clientY < mainCanvas.height - size - 10)) {
+                // Send Press W
+                WsSend(UINT8_CACHE[21]);
+            }
+        }
+        touches = e.touches;
+    };
+    function onTouchMove(e) {
+        e.preventDefault();
+        for (var i = 0; i < e.changedTouches.length; i++) {
+            var touch = e.changedTouches[i];
+            if (leftTouchID == touch.identifier) {
+                leftTouchPos.reset(touch.clientX, touch.clientY);
+                leftVector.copyFrom(leftTouchPos);
+                leftVector.minusEq(leftTouchStartPos);
+                rawMouseX = leftVector.x * 3 + mainCanvas.width / 2;
+                rawMouseY = leftVector.y * 3 + mainCanvas.height / 2;
+            }
+        }
+        touches = e.touches;
+    };
+    function onTouchEnd(e) {
+        touches = e.touches;
+        for (var i = 0; i < e.changedTouches.length; i++) {
+            var touch = e.changedTouches[i];
+            if (leftTouchID == touch.identifier) {
+                leftTouchID = -1;
+                leftVector.reset(0, 0);
+                break;
+            }
+        }
+    };
     function SendChat(a) {
         if (a.length > 200) {
             chatMessages.push({
@@ -467,13 +494,18 @@
                         message: "/setsetting - Set a graphics option",
                         time: Date.now()
                     });
+                    chatAlphaWait += 10000;
+                    drawChat();
+                    return;
                 } else if (v === "/connect") {
                     Connect(s[1]);
+                    drawChat();
+                    return;
                 } else if (v === "/setsetting") {
                     settings[s[2]] = s[3];
+                    drawChat();
+                    return;
                 }
-                drawChat();
-                return;
             }
         }
         var writer = new Writer();
@@ -481,57 +513,7 @@
         writer.setUint8(0);
         writer.setStringUTF8(a);
         WsSend(writer);
-    }
-
-    function onTouchStart(e) {
-        for (var i = 0; i < e.changedTouches.length; i++) {
-            var touch = e.changedTouches[i];
-            if ((leftTouchID < 0) && (touch.clientX < mainCanvas.width / 2)) {
-                leftTouchID = touch.identifier;
-                leftTouchStartPos.reset(touch.clientX, touch.clientY);
-                leftTouchPos.copyFrom(leftTouchStartPos);
-                leftVector.reset(0, 0);
-            }
-            var size = ~~(mainCanvas.width / 7);
-            if ((touch.clientX > mainCanvas.width - size) && (touch.clientY > mainCanvas.height - size)) {
-                // Send Press Space
-                WsSend(UINT8_CACHE[17]);
-            }
-            if ((touch.clientX > mainCanvas.width - size) && (touch.clientY > mainCanvas.height - 2 * size - 10) && (touch.clientY < mainCanvas.height - size - 10)) {
-                // Send Press W
-                WsSend(UINT8_CACHE[21]);
-            }
-        }
-        touches = e.touches;
-    }
-
-    function onTouchMove(e) {
-        e.preventDefault();
-        for (var i = 0; i < e.changedTouches.length; i++) {
-            var touch = e.changedTouches[i];
-            if (leftTouchID == touch.identifier) {
-                leftTouchPos.reset(touch.clientX, touch.clientY);
-                leftVector.copyFrom(leftTouchPos);
-                leftVector.minusEq(leftTouchStartPos);
-                rawMouseX = leftVector.x * 3 + mainCanvas.width / 2;
-                rawMouseY = leftVector.y * 3 + mainCanvas.height / 2;
-            }
-        }
-        touches = e.touches;
-    }
-
-    function onTouchEnd(e) {
-        touches = e.touches;
-        for (var i = 0; i < e.changedTouches.length; i++) {
-            var touch = e.changedTouches[i];
-            if (leftTouchID == touch.identifier) {
-                leftTouchID = -1;
-                leftVector.reset(0, 0);
-                break;
-            }
-        }
-    }
-
+    };
     function SendMouseMove(x, y) {
         var writer = new Writer(true);
         writer.setUint8(0x10);
@@ -539,66 +521,61 @@
         writer.setUint32(y);
         writer._b.push(0, 0, 0, 0);
         WsSend(writer);
-    }
+    };
 
     // Game variables
-    var nodesID = { }
-      , nodes = []
-      , deadNodes = []
-      , myNodes = []
-      , skins = { }
-      , leaderboard = []
-      , leaderboardType = -1
-      , leaderboardCanvas = null
-      , userScore = 0
-      , centerX = 0
-      , centerY = 0
-      , _cX = 0
-      , _cY = 0
-      , _cZoom = 1
-      , mapCenterSet = false
-      , rawMouseX = 0
-      , rawMouseY = 0
-      , border = BORDER_DEFAULT
-      , knownSkins = []
-      , loadedSkins = []
-      , drawZoom = 1
-      , viewZoom = 1
-      , mouseZoom = 1
-      , lastMessageTime = -1
-      , latency = Infinity
-      , drawing = false
-      , userName = ""
-      , teamColors = ["#FF3333", "#33FF33", "#3333FF", "#FFFF33", "#33FFFF", "#FF33FF", "#FF8833"] // Red Green Blue Yellow Cyan Magenta Orange
-      , gameType = -1
-      , serverVersion = "Unknown"
-      , chatText = ""
-      , chatMessages = []
-      , chatAlphaWait = 0
-      , chatCanvas = null
-      , isTyping = false
-      , isWindowFocused = true
-      , mainCanvas = null
-      , mainCtx = null
-      , chatBox = null
-      , lastDrawTime = Date.now()
-      , escOverlay = false
-      , fps = 0
-      , serverStatID = null
-      , serverStats = null
-      , serverStatCanvas = null
-      , touchable = 'createTouch' in document
-      , touchX
-      , touchY
-      , touches = []
-      , leftTouchID = -1
-      , leftTouchPos = new Vector2(0, 0)
-      , leftTouchStartPos = new Vector2(0, 0)
-      , leftVector = new Vector2(0, 0)
-      // , isTouchStart = "ontouchstart" in wHandle && /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)
-      , splitIcon = new Image
-      , ejectIcon = new Image
-      , pressed = {
+    var nodesID = { },
+        nodes = [],
+        deadNodes = [],
+        myNodes = [],
+        qTree = null,
+        leaderboard = [],
+        leaderboardType = -1, // -1 - Not set, 48 - Text list, 49 - FFA list, 50 - Pie chart
+        leaderboardCanvas = null,
+        userScore = 0,
+        centerX = 0,
+        centerY = 0,
+        _cX = 0, _cY = 0, _cZoom = 1, // Spectate packet X, Y & zoom
+        mapCenterSet = false,
+        rawMouseX = 0,
+        rawMouseY = 0,
+        border = BORDER_DEFAULT,
+        knownSkins = [],
+        loadedSkins = [],
+        drawZoom = 1,  // Scale when drawing
+        viewZoom = 1,  // Scale without scroll scaling
+        mouseZoom = 1, // Scroll scale
+        lastMessageTime = -1,
+        latency = -1,
+        drawing = false,
+        userName = "",
+        // Red Green Blue Yellow Cyan Magenta Orange
+        teamColors = ["#FF3333", "#33FF33", "#3333FF", "#FFFF33", "#33FFFF", "#FF33FF", "#FF8833"],
+        gameType = -1; // Given at SetBorder packet
+        serverVersion = "Unknown", // Given at SetBorder packet
+        chatText = "",
+        chatMessages = [],
+        chatAlphaWait = 0,
+        chatCanvas = null,
+        isTyping = false,
+        isWindowFocused = true,
+        mainCanvas = null,
+        mainCtx = null,
+        chatBox = null,
+        lastDrawTime = Date.now(),
+        escOverlay = false,
+        fps = 0,
+        serverStatID = null,
+        serverStats = null,
+        serverStatCanvas = null,
+        _viewMult = 1,
+        leftTouchID = -1,
+        leftTouchPos = new Vector2(0, 0),
+        leftTouchStartPos = new Vector2(0, 0),
+        leftVector = new Vector2(0, 0),
+        splitIcon = new Image,
+        ejectIcon = new Image,
+        pressed = {
             space: false,
             w: false,
             e: false,
@@ -612,21 +589,89 @@
     splitIcon.src = "img/split.png";
     ejectIcon.src = "img/feed.png";
 
+    // Render quality settings
+    var qualitySettings = {
+        'retina': {
+            getTextLineWidth: function(a) {
+                return a * .1;
+            },
+            cellOutline: true,
+            smoothRender: .3,
+            overrideGrid: false,
+            overrideSkins: false,
+            drawStat: true,
+            drawMassSpectate: true
+        },
+        'high': {
+            getTextLineWidth: function(a) {
+                return a * .1;
+            },
+            cellOutline: true,
+            smoothRender: .4,
+            overrideGrid: false,
+            overrideSkins: false,
+            drawStat: true,
+            drawMassSpectate: true
+        },
+        'medium': {
+            getTextLineWidth: function(a) {
+                return a * .1;
+            },
+            cellOutline: false,
+            smoothRender: .7,
+            overrideGrid: false,
+            overrideSkins: false,
+            drawStat: true,
+            drawMassSpectate: true
+        },
+        'low': {
+            getTextLineWidth: function(a) {
+                return 3.1;
+            },
+            cellOutline: false,
+            smoothRender: 1.3,
+            overrideGrid: true,
+            overrideSkins: false,
+            drawStat: false,
+            drawMassSpectate: false
+        },
+        'mobile': {
+            getTextLineWidth: function(a) {
+                return 0;
+            },
+            cellOutline: false,
+            smoothRender: Infinity,
+            overrideGrid: true,
+            overrideSkins: true,
+            drawStat: false,
+            drawMassSpectate: false
+        },
+    };
+
     // Client variables
     var settings = {
+        mobile: 'createTouch' in document && /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent),
         showMass: false,
         showNames: true,
         showLeaderboard: true,
         showChat: true,
         showGrid: false,
+        showTextOutline: true,
         showColor: true,
         showSkins: true,
         showMapGrid: true,
-        showBorder: false,
+        showBorder: true,
         darkTheme: true,
-        fastRenderMax: true,
-        maxScore: 0
+        fastRenderMax: .4,
+        quality: 'high',
+        qualityRef: qualitySettings['medium'],
+        allowGETipSet: false // Whether index.html?ip=abc is accepted (not implemented)
     };
+
+    // Touches
+    var touchStartX = 0,
+        touchStartY = 0,
+        touchMove = false;
 
     // Load local storage
     if (null != wHandle.localStorage) {
@@ -658,9 +703,9 @@
             "action": "getSkins"
         },
         success: function(data) {
-            response = JSON.parse(data["names"]);
+            response = JSON.parse(data.names);
             for (var i = 0; i < response.length; i++) {
-                if (-1 == knownSkins.indexOf(response[i])) {
+                if (-1 === knownSkins.indexOf(response[i])) {
                     knownSkins.push(response[i]);
                 }
             }
@@ -670,79 +715,92 @@
     function hideESCOverlay() {
         escOverlay = false;
         wjQuery("#overlays").hide();
-    }
-
+    };
     function showESCOverlay(arg) {
         escOverlay = true;
         userNickName = null;
         wjQuery("#overlays").fadeIn(350);
-    }
-
+    };
     function loadInit() {
         mainCanvas = document.getElementById('canvas');
         mainCtx = mainCanvas.getContext('2d');
         chatBox = document.getElementById("chat_textbox");
         mainCanvas.focus();
-        // wHandle functions
-        if (touchable) {
+
+        // Mobile handle
+        if (settings.mobile) {
             mainCanvas.addEventListener('touchstart', onTouchStart, false);
             mainCanvas.addEventListener('touchmove', onTouchMove, false);
             mainCanvas.addEventListener('touchend', onTouchEnd, false);
         }
+
+        // Wheel handling
         function handleWheel(event) {
             mouseZoom *= Math.pow(.9, event.wheelDelta / -120 || event.detail || 0);
             0.1 > mouseZoom && (mouseZoom = 0.1);
             mouseZoom > 4 / viewZoom && (mouseZoom = 4 / viewZoom);
         }
+
         // Mouse wheel
-        if (/firefox/i.test(navigator.userAgent)) {
+        if (/firefox/i.test(navigator.userAgent))
             document.addEventListener("DOMMouseScroll", handleWheel, false);
-        } else {
+        else
             document.body.onmousewheel = handleWheel;
-        }
+
         window.onfocus = function() {
             isWindowFocused = true;
-        }
+        };
+
         window.onblur = function() {
             isWindowFocused = false;
-        }
+        };
+
         wHandle.onkeydown = function(event) {
             switch (event.keyCode) {
                 case 13: // enter
-                    if (isTyping && settings.showChat) {
+                    if (escOverlay) break;
+                    if (!settings.showChat) break;
+                    if (isTyping) {
                         chatBox.blur();
                         var chattxt = chatBox.value;
                         if (chattxt.length > 0) SendChat(chattxt);
                         chatBox.value = "";
-                    } else if (settings.showChat) chatBox.focus();
+                    } else chatBox.focus();
                     break;
                 case 32: // space
-                    if (isTyping) break;
+                    if (isTyping || escOverlay || pressed.space) break;
                     WsSend(UINT8_CACHE[17]);
+                    pressed.space = true;
                     break;
                 case 87: // W
-                    if (isTyping) break;
+                    if (isTyping || escOverlay || pressed.w) break;
                     WsSend(UINT8_CACHE[21]);
+                    pressed.w = true;
                     break;
                 case 81: // Q
-                    if (isTyping) break;
+                    if (isTyping || escOverlay || pressed.q) break;
                     WsSend(UINT8_CACHE[18]);
+                    pressed.q = true;
                     break;
                 case 69: // E
-                    if (isTyping) break;
+                    if (isTyping || escOverlay || pressed.e) break;
                     WsSend(UINT8_CACHE[22]);
+                    pressed.e = true;
                     break;
                 case 82: // R
-                    if (isTyping) break;
+                    if (isTyping || escOverlay || pressed.r) break;
                     WsSend(UINT8_CACHE[23]);
+                    pressed.r = true;
                     break;
                 case 84: // T
-                    if (isTyping) break;
+                    if (isTyping || escOverlay || pressed.t) break;
                     WsSend(UINT8_CACHE[24]);
+                    pressed.t = true;
                     break;
                 case 80: // P
-                    if (isTyping) break;
+                    if (isTyping || escOverlay || pressed.p) break;
                     WsSend(UINT8_CACHE[25]);
+                    pressed.p = true;
                     break;
                 case 27: // esc
                     if (pressed.esc) break;
@@ -752,6 +810,7 @@
                     break;
             }
         };
+
         wHandle.onkeyup = function(event) {
             switch (event.keyCode) {
                 case 32: // space
@@ -780,44 +839,115 @@
                     pressed.esc = false;
                     break;
             }
-        }
+        };
+
         chatBox.onblur = function() {
             isTyping = false;
             drawChat();
         };
+
         chatBox.onfocus = function() {
             isTyping = true;
             drawChat();
         };
+
         mainCanvas.onmousemove = function(event) {
             rawMouseX = event.clientX;
             rawMouseY = event.clientY;
         };
+
+        setTimeout(function() {
+            // Auto quality setting
+            var a = mainCanvas.width = wHandle.innerWidth,
+                b = mainCanvas.height = wHandle.innerHeight;
+            var qualityOutput = Math.min(((a * b) / 178000), 20); // Output 1-20
+            switch (Math.round(qualityOutput)) {
+                case 20: case 19: case 18: case 17:
+                    $('#quality').val('retina');
+                    settings.qualityRef = qualitySettings[settings.quality = 'retina'];
+                    break;
+                case 16: case 15: case 14: case 13: case 12: case 11:
+                    $('#quality').val('high');
+                    settings.qualityRef = qualitySettings[settings.quality = 'high'];
+                    break;
+                case 10: case 9: case 8: case 7: case 6: case 5:
+                    $('#quality').val('medium');
+                    settings.qualityRef = qualitySettings[settings.quality = 'medium'];
+                    break;
+                case 4: case 3:
+                    $('#quality').val('low');
+                    settings.qualityRef = qualitySettings[settings.quality = 'low'];
+                    break;
+                default:
+                    $('#quality').val('mobile');
+                    settings.qualityRef = qualitySettings[settings.quality = 'mobile'];
+                    break;
+            }
+            log.debug("Auto-quality " + settings.quality + " for window size " + mainCanvas.width + "x" +
+                mainCanvas.height + ", quality value " + Math.round(qualityOutput) + " (real " + qualityOutput + "), view multiplier " + viewMultiplier());
+        }, 100);
 
         setInterval(function() {
             // Mouse update
             SendMouseMove((rawMouseX - mainCanvas.width / 2) / drawZoom + centerX,
                 (rawMouseY - mainCanvas.height / 2) / drawZoom + centerY);
         }, 40);
-        wHandle.onresize = canvasResize;
-        canvasResize();
+
+        wHandle.onresize = function() {
+            window.scrollTo(0,0);
+            var cW = mainCanvas.width = wHandle.innerWidth,
+                cH = mainCanvas.height = wHandle.innerHeight;
+            _viewMult = Math.max(cH / 1080, cW / 1920);
+        };
+
+        wHandle.onresize();
+
         log.info("Loaded, took " + (Date.now() - LOAD_START) + " ms");
+
         if (window.requestAnimationFrame)
             window.requestAnimationFrame(drawLoop);
         else
             setInterval(drawGame, 1E3 / FPS_MAXIMUM);
         showESCOverlay();
-    }
-
+    };
     function getChatAlpha() {
-        if (isTyping) return true;
+        if (isTyping) return 1;
         var now = Date.now(),
             lastMsg = chatMessages.peek(),
             diff = now - lastMsg.time;
 
         return 1 - Math.min(Math.max((diff - chatAlphaWait) * .001, 0), 1);
-    }
-
+    };
+    function drawTouch() {
+        mainCtx.save();
+        for(var i=0; i<touches.length; i++) {
+            var touch = touches[i];
+            if(touch.identifier == leftTouchID){
+                mainCtx.beginPath();
+                mainCtx.strokeStyle = "#0096ff";
+                mainCtx.lineWidth = 6;
+                mainCtx.arc(leftTouchStartPos.x, leftTouchStartPos.y, 40,0,Math.PI*2,true);
+                mainCtx.stroke();
+                mainCtx.beginPath();
+                mainCtx.strokeStyle = "#0096ff";
+                mainCtx.lineWidth = 2;
+                mainCtx.arc(leftTouchStartPos.x, leftTouchStartPos.y, 60,0,Math.PI*2,true);
+                mainCtx.stroke();
+                mainCtx.beginPath();
+                mainCtx.strokeStyle = "#0096ff";
+                mainCtx.arc(leftTouchPos.x, leftTouchPos.y, 40, 0,Math.PI*2, true);
+                mainCtx.stroke();
+            } else {
+                mainCtx.beginPath();
+                mainCtx.beginPath();
+                mainCtx.strokeStyle = "#0096ff";
+                mainCtx.lineWidth = "6";
+                mainCtx.arc(touch.clientX, touch.clientY, 40, 0, Math.PI*2, true);
+                mainCtx.stroke();
+            }
+        }
+        mainCtx.restore();
+    };
     function drawChat() {
         if (!settings.showChat || chatMessages.length === 0) return;
         if (!chatCanvas) chatCanvas = document.createElement('canvas');
@@ -870,8 +1000,7 @@
             if(!msg.server) ctx.fillStyle = "#FFFFFF";
             ctx.fillText(" " + msg.message, 10 + fW, 5 + 20 * (i + 1));
         }
-    }
-
+    };
     function drawServerStat() {
         if (!serverStats) {
             serverStatCanvas = null;
@@ -899,28 +1028,30 @@
         ctx.fillText(a, 2, 48);
         ctx.fillText(b, 2, 64);
         ctx.fillText(c, 2, 80);
-    }
-
+    };
     function drawLeaderboard() {
         if (leaderboardType === -1) return;
+
+        if (leaderboard.length === 0 || !settings.showNames) {
+            leaderboardCanvas = null;
+            return;
+        }
         if (!leaderboardCanvas) leaderboardCanvas = document.createElement('canvas');
 
         var ctx = leaderboardCanvas.getContext('2d'),
             l = leaderboard.length;
-            ctxScale = Math.min(0.22 * mainCanvas.height, Math.min(200, .3 * mainCanvas.width)) * 0.005,
             width = leaderboardType !== 50 ? 60 + 24 * l : 240,
             i = 0;
 
-        leaderboardCanvas.width = 200 * ctxScale;
-        leaderboardCanvas.height = width * ctxScale;
+        leaderboardCanvas.width = 200;
+        leaderboardCanvas.height = width;
 
-        ctx.scale(ctxScale, ctxScale);
         ctx.globalAlpha = .4;
         ctx.fillStyle = "#000000";
         ctx.fillRect(0, 0, 200, width);
 
         ctx.globalAlpha = 1;
-        ctx.fillStyle = "#428BCA";
+        ctx.fillStyle = "#FFFFFF";
         ctx.font = "30px Noto Sans";
         ctx.fillText("Leaderboard", 100 - ctx.measureText("Leaderboard").width / 2, 40);
 
@@ -937,8 +1068,7 @@
             ctx.closePath();
         } else {
             // Text-based
-            var o, me = false, w, start,
-                colors = ['#FF5656','#EC6856','#D97B56','#C68E56','#B3A156','#A1B356','#8EC656','#7BD956','#68EC56','#56FF56','#66FF66','#77FF77','#88FF88','#99FF99','#AAFFAA','#BBFFBB','#CCFFCC','#DDFFDD','#EEFFEE','#FFFFFF','#FFFFFF','#FFFFFF','#FFFFFF','#FFFFFF','#FFFFFF'];
+            var o, me = false, w, start,colors = ['#FF5656','#EC6856','#D97B56','#C68E56','#B3A156','#A1B356','#8EC656','#7BD956','#68EC56','#56FF56','#66FF66','#77FF77','#88FF88','#99FF99','#AAFFAA','#BBFFBB','#CCFFCC','#DDFFDD','#EEFFEE','#FFFFFF','#FFFFFF','#FFFFFF','#FFFFFF','#FFFFFF','#FFFFFF'];
             ctx.font = "20px Noto Sans";
             for ( ; i < l; i++) {
                 o = leaderboard[i];
@@ -958,40 +1088,7 @@
                 }
             }
         }
-    }
-
-    function drawTouch()
-    {
-        mainCtx.save();
-        for(var i=0; i<touches.length; i++) {
-            var touch = touches[i];
-            if(touch.identifier == leftTouchID){
-                mainCtx.beginPath();
-                mainCtx.strokeStyle = "#0096ff";
-                mainCtx.lineWidth = 6;
-                mainCtx.arc(leftTouchStartPos.x, leftTouchStartPos.y, 40,0,Math.PI*2,true);
-                mainCtx.stroke();
-                mainCtx.beginPath();
-                mainCtx.strokeStyle = "#0096ff";
-                mainCtx.lineWidth = 2;
-                mainCtx.arc(leftTouchStartPos.x, leftTouchStartPos.y, 60,0,Math.PI*2,true);
-                mainCtx.stroke();
-                mainCtx.beginPath();
-                mainCtx.strokeStyle = "#0096ff";
-                mainCtx.arc(leftTouchPos.x, leftTouchPos.y, 40, 0,Math.PI*2, true);
-                mainCtx.stroke();
-            } else {
-                mainCtx.beginPath();
-                mainCtx.beginPath();
-                mainCtx.strokeStyle = "#0096ff";
-                mainCtx.lineWidth = "6";
-                mainCtx.arc(touch.clientX, touch.clientY, 40, 0, Math.PI*2, true);
-                mainCtx.stroke();
-            }
-        }
-        mainCtx.restore();
-    }
-
+    };
     function drawSplitIcon() {
         if (splitIcon.width) {
             var size = ~~ (mainCanvas.width / 7);
@@ -1001,13 +1098,12 @@
             var size = ~~ (mainCanvas.width / 7);
             mainCtx.drawImage(ejectIcon, mainCanvas.width - size, mainCanvas.height - 2*size-10, size, size);
         }
-    }
-
+    };
     function drawGrid() {
         mainCtx.save();
-        mainCtx.strokeStyle = settings.darkTheme ? "#1A1A1A" : "#000000";
+        mainCtx.strokeStyle = settings.darkTheme ? "#AAAAAA" : "#000000";
         mainCtx.globalAlpha = .2;
-        var step = 50,
+        var step = 50
             cW = mainCanvas.width / drawZoom, cH = mainCanvas.height / drawZoom,
             startLeft = (-centerX + cW * .5) % step,
             startTop = (-centerY + cH * .5) % step,
@@ -1028,51 +1124,46 @@
         }
         mainCtx.stroke();
         mainCtx.restore();
-    }
-
+    };
     function mapgrid() {
-        var gridl = Math.round(border.left) + 40,
-            gridt = Math.round(border.top) + 40,
-            gridc = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'['split'](''),
-            gridr = (Math.round(border.right) - 40 - gridl) / 5,
-            gridb = (Math.round(border.bottom) - 40 - gridt) / 5;
+        var gridl = Math.round(border.left) + 40
+          , gridt = Math.round(border.top) + 40
+          , gridc = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'['split']('')
+          , gridr = (Math.round(border.right) - 40 - gridl) / 5
+          , gridb = (Math.round(border.bottom) - 40 - gridt) / 5;
 
         mainCtx.save();
         mainCtx.beginPath();
         mainCtx.globalAlpha = 0.2;
-        mainCtx.lineWidth = 20;
         mainCtx.textAlign = 'center';
         mainCtx.textBaseline = 'middle';
         mainCtx.font = 0.6 * gridr + 'px Noto Sans';
-        mainCtx.fillStyle = '#428BCA';
+        mainCtx.fillStyle = 'rgba(66,139,202,0.25)';
         for(var i = 0; 5 > i; i++) {
             for(var n = 0; 5 > n; n++) {
                 mainCtx.fillText(gridc[i] + (n + 1), gridl + gridr * n + gridr / 2, gridt + gridb * i + gridb / 2)
             }
         };
-        mainCtx.globalAlpha = 1;
+        mainCtx.globalAlpha = 1.0;
         mainCtx.lineWidth = 80;
-        mainCtx.strokeStyle = settings.darkTheme ? "#1A1A1A" : "#EAEAEA";
+        mainCtx.strokeStyle = settings.darkTheme ? "rgba(26,26,26,0.15)" : "rgba(236,236,236,0.15)";
         for(i = 0; 5 > i; i++) {
             for(n = 0; 5 > n; n++) {
                 mainCtx.strokeRect(gridl + gridr * n, gridt + gridb * i, gridr, gridb)
             }
         };
         mainCtx.stroke();
-        mainCtx.restore()
-    }
-
+        mainCtx.restore();
+    };
     function drawLoop() {
         drawGame(true);
         window.requestAnimationFrame(drawLoop);
-    }
-
-    function drawGame(normal) {
-        if (normal) {
-            var dr = Date.now(), passed;
-            fps += (1000 / (passed = dr - lastDrawTime) - fps) * .1;
-            lastDrawTime = dr;
-        }
+    };
+    function drawGame() {
+        var dr = Date.now(), passed;
+        fps += (1000 / (passed = dr - lastDrawTime) - fps) * .1;
+        lastDrawTime = dr;
+        isNaN(fps) && (fps = 0);
 
         var cW = mainCanvas.width = wHandle.innerWidth,
             cH = mainCanvas.height = wHandle.innerHeight,
@@ -1080,9 +1171,107 @@
             cH2 = cH / 2,
             newDrawZoom = 0,
             viewMult = viewMultiplier(),
-            i, l = myNodes.length, n, newScore = 0;
+            i, l;
 
+
+        var nodesCopy = nodes.concat(deadNodes);
+
+        drawing = true;
+
+        // Background
+        mainCtx.save();
+        mainCtx.fillStyle = settings.darkTheme ? "rgba(0,0,0,0.5)" : "#F2FBFF";
+        mainCtx.fillRect(0, 0, cW, cH);
+        mainCtx.restore();
+
+        var tx, ty, z1;
+
+        // Grid
+        if (settings.showGrid && !settings.qualityRef.overrideGrid) drawGrid();
+
+        // Scale & translate for cell drawing
+        mainCtx.translate((tx = cW2 - centerX * drawZoom), (ty = cH2 - centerY * drawZoom));
+        mainCtx.scale(drawZoom, drawZoom);
+
+        // Map Grid
+        if (settings.showMapGrid) mapgrid();
+
+        // Border
+        if (settings.showBorder) {
+            mainCtx.strokeStyle = '#FF0000';
+            mainCtx.lineWidth = 5;
+            mainCtx.lineCap = "round";
+            mainCtx.lineJoin = "round";
+            mainCtx.beginPath();
+            mainCtx.moveTo(border.left,border.top);
+            mainCtx.lineTo(border.right,border.top);
+            mainCtx.lineTo(border.right,border.bottom);
+            mainCtx.lineTo(border.left,border.bottom);
+            mainCtx.closePath();
+            mainCtx.stroke();
+        }
+
+        nodesCopy.sort(nodeSort);
+
+        // Draw cells
+        l = nodesCopy.length;
+        for (i = 0; i < l; i++) {
+            n = nodesCopy[i];
+            n.draw(dr);
+        }
+
+        // Return back to normal
+        mainCtx.scale((z1 = 1 / drawZoom), z1);
+        mainCtx.translate(-tx, -ty);
+
+        // Scale with viewMult for readability
+        mainCtx.scale(viewMult, viewMult);
+
+        // Score & FPS drawing
+        var topText = ~~fps + " FPS",
+            topSize = 20 * viewMult;
+        if (latency !== -1) topText += ", " + latency + "ms ping";
+
+        mainCtx.fillStyle = settings.darkTheme ? "#FFFFFF" : "#000000";
+        if (userScore > 0) {
+            var scoreSize = 32 * viewMult;
+            mainCtx.font = ~~scoreSize + "px Noto Sans";
+            mainCtx.fillText("Score: " + userScore, 2, 32 * viewMult);
+            mainCtx.font = ~~topSize + "px Noto Sans";
+            mainCtx.fillText(topText, 2, 58 * viewMult);
+            settings.qualityRef.drawStat && serverStatCanvas && mainCtx.drawImage(serverStatCanvas, 2, 60 * viewMult);
+        } else {
+            mainCtx.font = ~~topSize + "px Noto Sans";
+            mainCtx.fillText(topText, 2, 22 * viewMult);
+            settings.qualityRef.drawStat && serverStatCanvas && mainCtx.drawImage(serverStatCanvas, 2, 24 * viewMult);
+        }
+        leaderboardCanvas && mainCtx.drawImage(leaderboardCanvas, cW / viewMult - leaderboardCanvas.width - 10, 10);
+
+        // Chat alpha update
+        if (chatMessages.length > 0) if (getChatAlpha() !== 1) drawChat();
+        chatCanvas && mainCtx.drawImage(chatCanvas, 10, (cH - 50) / viewMult - chatCanvas.height);
+
+        // Scale back to normal
+        mainCtx.scale(viewMult = 1 / viewMult, viewMult);
+
+        // Draw touches
+        if(settings.mobile) {
+            drawTouch();
+            drawSplitIcon();
+        }
+
+        drawing = false;
+
+        garbageCollection();
+        viewUpdate();
+    };
+    function viewUpdate() {
         // Zoom, position & score update
+        var l = myNodes.length,
+            newDrawZoom,
+            viewMult = viewMultiplier(),
+            newScore = 0;
+
         if (l > 0) {
             var ncX = 0,
                 ncY = 0;
@@ -1097,12 +1286,13 @@
                 ncY += n.y;
                 rl++;
             }
+            //console.log(rl, ncX, ncY);
             if (rl > 0) {
                 userScore = Math.max(newScore, userScore);
                 ncX /= rl;
                 ncY /= rl;
-                centerX += (ncX - centerX) * .4;
-                centerY += (ncY - centerY) * .4;
+                centerX += (~~ncX - centerX) * .4;
+                centerY += (~~ncY - centerY) * .4;
                 viewZoom = Math.pow(Math.min(64 / viewZoom, 1), .4);
                 newDrawZoom = viewZoom;
             } else {
@@ -1116,81 +1306,6 @@
             newDrawZoom = _cZoom;
         }
         drawZoom += (newDrawZoom * viewMult * mouseZoom - drawZoom) * .11;
-        drawing = true;
-
-        // Background
-        mainCtx.save();
-        mainCtx.fillStyle = settings.darkTheme ? "#111111" : "#F2FBFF";
-        mainCtx.fillRect(0, 0, cW, cH);
-        mainCtx.restore();
-
-        var tx, ty, z1;
-
-        // Grid
-        if (settings.showGrid) drawGrid();
-
-        // Scale & translate for cell drawing
-        mainCtx.translate((tx = cW2 - centerX * drawZoom + .5), (ty = cH2 - centerY * drawZoom + .5));
-        mainCtx.scale(drawZoom, drawZoom);
-
-        if (settings.showMapGrid) mapgrid();
-        if (settings.showBorder) {
-            mainCtx.strokeStyle = '#FF0000';
-            mainCtx.lineWidth = 5;
-            mainCtx.lineCap = "round";
-            mainCtx.lineJoin = "round";
-            mainCtx.beginPath();
-            mainCtx.moveTo(border.left,border.top);
-            mainCtx.lineTo(border.right,border.top);
-            mainCtx.lineTo(border.right,border.bottom);
-            mainCtx.lineTo(border.left,border.bottom);
-            mainCtx.closePath();
-            mainCtx.stroke();
-        }
-        var a = nodes.concat(deadNodes);
-        a.sort(nodeSort);
-
-        // Draw cells
-        l = a.length;
-        for (i = 0; i < l; i++) {
-            n = a[i];
-            n.draw(dr);
-        }
-
-        // Return back to normal
-        mainCtx.scale((z1 = 1 / drawZoom), z1);
-        mainCtx.translate(-tx, -ty);
-
-        mainCtx.save();
-        mainCtx.fillStyle = settings.darkTheme ? "#F2FBFF" : "#111111";
-        // Score & FPS drawing
-        if (userScore > 0) {
-            mainCtx.font = "32px Noto Sans";
-            mainCtx.fillText("Score: " + userScore, 2, 34);
-            mainCtx.font = "20px Noto Sans";
-            mainCtx.fillText(~~fps + " FPS, " + latency + " ping", 2, 58);
-            serverStatCanvas && mainCtx.drawImage(serverStatCanvas, 2, 60);
-        } else {
-            mainCtx.font = "20px Noto Sans";
-            mainCtx.fillText(~~fps + " FPS, " + latency + " ping", 2, 22);
-            serverStatCanvas && mainCtx.drawImage(serverStatCanvas, 2, 24);
-        }
-        mainCtx.restore();
-
-        leaderboardCanvas && mainCtx.drawImage(leaderboardCanvas, cW - leaderboardCanvas.width - 10, 10);
-
-        // Chat alpha update
-        if (chatMessages.length > 0) if (getChatAlpha() !== 1) drawChat();
-        chatCanvas && mainCtx.drawImage(chatCanvas, 10, cH - 50 - chatCanvas.height);
-
-        if(touchable) {
-            drawSplitIcon();
-            drawTouch();
-        }
-
-        drawing = false;
-
-        collectTextGarbage();
     }
 
     function nodeSort(a, b) {
@@ -1198,13 +1313,7 @@
     }
 
     function viewMultiplier() {
-        return Math.max(mainCanvas.height / 1080, mainCanvas.width / 1920);
-    }
-
-    function canvasResize() {
-        window.scrollTo(0, 0);
-        mainCanvas.width = wHandle.innerWidth;
-        mainCanvas.height = wHandle.innerHeight;
+        return _viewMult;
     }
 
     function Cell(id, x, y, size, name, color, skin, time, flags) {
@@ -1212,7 +1321,7 @@
         this.x = this.nx = x;
         this.y = this.ny = y;
         this.size = this.nSize = size;
-        this.setName(name, 1);
+        this.setName(name);
         this.setColor(color);
         this.skin = skin;
         if (flags) {
@@ -1222,8 +1331,7 @@
             (this.isEjected || this.isVirus || this.isAgitated) && (this.notPellet = true);
         }
         this.birthStamp = this.updateStamp = time;
-    }
-
+    };
     Cell.prototype = {
         destroyed: false,
         id: 0,
@@ -1232,12 +1340,12 @@
         size: 0,
         name: 0,
         color: "#FFFFFF",
+        nameSkin: "",
         skin: "",
         updateStamp: -1,
         birthStamp: -1,
         deathStamp: -1,
         appStamp: -1,
-        _ts: -1,
         nx: 0,
         ny: 0,
         nSize: 0,
@@ -1253,13 +1361,12 @@
         _meCache: null, // If it's a pellet it'll draw from this cache
         _meW: null,
         _meH: null,
-        _nameTxt: null,
-        _massTxt: null,
         updateAppearance: function(time, dt) {
             if (this.destroyed)
                 if (time - this.deathStamp > 200 || !this.killer || this.size < 4) {
                     // Fully remove
-                    deadNodes.remove(this);
+                    var i;
+                    ((i = deadNodes.indexOf(this)) > -1) && deadNodes.splice(i, 1);
                 }
             if (this.killer) {
                 this.nx = this.killer.x;
@@ -1269,13 +1376,19 @@
             this.x += (this.nx - this.x) * dt;
             this.y += (this.ny - this.y) * dt;
             this.size += (this.nSize - this.size) * dt;
-            this._nameSize = ~~(Math.max(~~(.3 * this.size), 24) / 4) * 4;
+            this._nameSize = ~~(Math.max(~~(.3 * this.nSize), 24) / 4) * 4;
         },
         setName: function(name) {
+            var reg = /\{([\w]+)\}/.exec(name);
+            if (reg) if (reg.length === 2) {
+                this.nameSkin = reg[1].toLowerCase();
+                this.name = name.replace(reg[0], "").trim();
+                return;
+            }
             this.name = name;
         },
-        getNameSize: function() {
-            return this._nSize;
+        setSkin: function(skin) {
+            this.skin = skin[0] === "%" ? skin.replace("%", "") : skin;
         },
         setColor: function(color) {
             this.color = color;
@@ -1289,8 +1402,10 @@
         },
         destroy: function(time) {
             delete nodesID[this.id];
-            nodes.remove(this);
-            if (myNodes.remove(this.id) && myNodes.length === 0) {
+            var i;
+            ((i = nodes.indexOf(this)) !== -1) && nodes.splice(i, 1);
+            ((i = myNodes.indexOf(this.id)) !== -1) && myNodes.splice(i, 1);
+            if (i > -1 && myNodes.length === 0) {
                 _cX = centerX;
                 _cY = centerY;
                 _cZoom = viewZoom;
@@ -1303,17 +1418,19 @@
         },
         updatePoints: function(animated, jagged, dt) {
             // Update points
-            var pointAmount = jagged ? (this.size * .9) : this.size * drawZoom,
+            var pointAmount = this.size,
                 minPointAmount = jagged ? 90 : (this.isPellet ? 5 : 16),
                 x = this.x,
                 y = this.y,
-                i = 0, p, sz, step, pt, avg;
+                maxSizeRemove = this.size * .16,
+                i = 0, sz, step, pt, px, py, temp, diff, nDiff;
 
-            this.notPellet && (pointAmount *= .5);
+            !this.isVirus && (pointAmount *= drawZoom);
             this.isEjected && (pointAmount *= .5);
             pointAmount = Math.max(~~pointAmount, minPointAmount);
             jagged && (pointAmount = ~~(pointAmount * .5) * 2);
 
+            step = PI_2 / pointAmount;
             var newPoints = [];
             for ( ; i < pointAmount; i++) {
                 var nDiff;
@@ -1321,25 +1438,52 @@
                     // Animate the point
                     pt = this.rigidPoints[i];
                     nDiff = pt.newDiff;
-                    p = pt.diff + (nDiff - pt.diff) * dt;
-                    if (toleranceCompare(p, nDiff, .05)) nDiff = getNextDiff(jagged, i, pointAmount, animated);
+                    diff = pt.diff + (nDiff - pt.diff) * dt;
+                    if (toleranceCompare(diff, nDiff, .05)) nDiff = getNextDiff(jagged, i, pointAmount, animated);
                 } else if (animated) {
                     // New point
                     nDiff = getNextDiff(jagged, i, pointAmount, animated);
-                    p = 0;
+                    diff = 0;
                 } else {
                     // Non-animated point
-                    p = nDiff = getNextDiff(jagged, i, pointAmount, animated);
+                    diff = nDiff = getNextDiff(jagged, i, pointAmount, animated);
                 }
-                sz = this.size + p;
-                step = PI_2 / pointAmount;
+                sz = this.size + diff;
+
+                // Calculate position
+                var sin = Math.sin(i * step), cos = Math.cos(i * step);
+                px = x + sin * sz;
+                py = y + cos * sz;
+
+                var cx = 0, cy = 0;
+                // Point collision check (doesn't work)
+                /*if (qTree) {
+                    var id = this.id,
+                        dx, dy;
+                    qTree.retrieve2(cx, cy, 1, 1, function(a) {
+                        if (a.refID !== id && 25 > (cx - a.x) * (cx - a.x) + (cy - a.y) * (cy - a.y)) {
+                            console.log('collision')
+                        }
+                    });
+                }*/
+                px += cx;
+                py += cy;
+
+                // Border check
+                if (px < border.left) cx -= sin * Math.min(border.left - px, maxSizeRemove);
+                if (px > border.right) cx -= sin * Math.min(px - border.right, maxSizeRemove);
+                if (py < border.top) cy -= cos * Math.min(border.top - py, maxSizeRemove);
+                if (py > border.bottom) cy -= cos * Math.min(py - border.bottom, maxSizeRemove);
+                px += cx;
+                py += cy;
 
                 newPoints.push({
+                    refID: this.id,
                     size: sz,
-                    diff: p,
+                    diff: diff,
                     newDiff: nDiff,
-                    x: x + Math.sin(i * step) * sz,
-                    y: y + Math.cos(i * step) * sz
+                    x: px,
+                    y: py
                 });
             }
 
@@ -1356,102 +1500,118 @@
             // Text drawing
             if (this.notPellet) {
                 var nameDraw = settings.showNames && this.name !== "" && !this.isVirus;
-                if (nameDraw) drawText(this.x, this.y, this.name, this._nameSize, "#FFFFFF", true, "#000000");
+                if (nameDraw) drawText(this.x, this.y, this.name, this._nameSize, false);
 
-                if (settings.showMass && (myNodes.indexOf(this.id) !== -1 || myNodes.length === 0) && this.size >= 20) {
-                    var text = ~~(this.size * this.size * .01);
+                if (settings.showMass && (myNodes.indexOf(this.id) !== -1 ||
+                    (myNodes.length === 0 && settings.qualityRef.drawMassSpectate)) && this.size >= 20) {
+
+                    var text = Math.ceil(this.size * this.size * .01).toString();
                     if (nameDraw)
-                        drawText(this.x, this.y + this.size * .2, text, this._nameSize * .5, "#FFFFFF", true, "#000000");
+                        drawText(this.x, this.y + Math.max(this.size * .22, this._nameSize * .8), text, this._nameSize * .5, true);
                     else
-                        drawText(this.x, this.y, text, this._nameSize * .5, "#FFFFFF", true, "#000000");
+                        drawText(this.x, this.y, text, this._nameSize * .5, true);
                 }
             }
             mainCtx.restore();
         },
         drawShape: function(dt) {
-            var complex = settings.fastRenderMax <= drawZoom,
+            var complex = this.wasComplexDrawing = settings.fastRenderMax <= drawZoom,
                 jagged = this.isVirus,
                 fill = mainCtx.createRadialGradient(this.x,this.y,0,this.x,this.y,this.size);
 
-            mainCtx.lineWidth = this.isEjected ? 0 : this.size > 20 ? Math.max(this.size * .01, 10) : 0;
+            mainCtx.globalCompositeOperation = "lighter";
+            mainCtx.lineWidth = settings.qualityRef.cellOutline ? (this.isEjected ? 0 : this.size > 20 ? Math.max(this.size * .01, 10) : 0) : 0;
             mainCtx.lineCap = "round";
             mainCtx.lineJoin = jagged ? "miter" : "round";
-            fill.addColorStop(0, 'rgba(0,0,0,0.3)');
+            this.isPellet ? fill.addColorStop(0, 'rgba(255,255,255,0.6)') : fill.addColorStop(0, 'rgba(0,0,0,0.4)');
             fill.addColorStop(1, this.color);
-            if(this.skin && settings.showSkins) {
-                var skinName = this.skin.substring(1);
-                if (!skins.hasOwnProperty(skinName)) {
-                    skins[skinName] = new Image;
-                    skins[skinName].src = 'http://ogar.mivabe.nl/skins/' + skinName + '.png';
-                }
-                complex = 0;
-            }
-            mainCtx.fillStyle = fill;
-            mainCtx.strokeStyle = this.strokeColor;
+
+            mainCtx.fillStyle = settings.showColor ? fill : "#FFFFFF";
+            mainCtx.strokeStyle = settings.showColor ? this.strokeColor : "#E5E5E5";
+
             if (complex || jagged || this.isAgitated) {
                 mainCtx.beginPath();
                 this.updatePoints(complex, jagged, dt);
                 var points = this.rigidPoints;
-                mainCtx.lineTo(
+
+                mainCtx.moveTo(
                     points[0].x,
                     points[0].y
                 );
+
                 for (var i = 1, l = points.length; i < l; i++) {
                     mainCtx.lineTo(
                         points[i].x,
                         points[i].y
                     );
                 }
+
                 mainCtx.lineTo(
                     points[0].x,
                     points[0].y
                 );
                 mainCtx.fill();
                 mainCtx.stroke();
+                this.drawSkin();
                 mainCtx.closePath();
             } else {
-                if (this._meCache) {
+                this.rigidPoints = [];
+                if (this._meCache)
                     // Cached drawing exists - use it
                     mainCtx.drawImage(this._meCache, this.x - this.size, this.y - this.size, this.size * 2, this.size * 2);
-                } else {
-                    mainCtx.globalAlpha=1;
+                else {
                     mainCtx.beginPath();
-                    mainCtx.arc(this.x, this.y, this.size - mainCtx.lineWidth * 0.5 + 1, 0, PI_2, false);
+                    mainCtx.arc(this.x, this.y, this.size - mainCtx.lineWidth * .5 + .5, 0, PI_2, false);
                     mainCtx.fill();
-                    mainCtx.stroke();
-                    if (skins.hasOwnProperty(skinName) && settings.showSkins) {
-                        mainCtx.save();
-                        mainCtx.clip();
-                        mainCtx.globalAlpha=0.4;
-                        mainCtx.drawImage(skins[skinName], this.x - this.size, this.y - this.size, this.size * 2, this.size * 2);
-                        mainCtx.restore();
-                    }
+                    settings.qualityRef.cellOutline && mainCtx.stroke();
+                    this.drawSkin();
                     mainCtx.closePath();
+                }
+            }
+        },
+        drawSkin: function() {
+            if (settings.qualityRef.overrideSkins) return;
+
+            var skin = this.skin || this.nameSkin;
+
+            if (settings.showSkins && skin != '') { // && -1 !== knownSkins.indexOf(skin)) {
+                skin = skin.substring(1);
+                if (!loadedSkins.hasOwnProperty(skin)) {
+                    // Download skin
+                    loadedSkins[skin] = new Image;
+                    loadedSkins[skin].src = SKIN_URL + skin + '.png';
+                }
+                // Set skin to draw
+                if (0 != loadedSkins[skin].width && loadedSkins[skin].complete) {
+                    loadedSkins[skin].accessTime = Date.now();
+                    mainCtx.save();
+                    mainCtx.clip();
+                    mainCtx.drawImage(loadedSkins[skin], this.x - this.size, this.y - this.size, 2 * this.size, 2 * this.size);
+                    mainCtx.restore();
                 }
             }
         }
     };
-
     function toleranceCompare(a, b, t) {
         var d = a - b;
         (d < 0) && (d = -d);
         return d <= t;
-    }
-
+    };
     function getNextDiff(jagged, index, pointAmount, animated) {
         if (animated) {
-            var maxDiff = jagged ? 3 : 1.7 / drawZoom * .6;
+            var maxDiff = jagged ? 3 : 1.7 * .6;
             if (jagged) return (index % 2 === 1 ? -maxDiff : maxDiff) + Math.random() - 1.5;
             return (Math.random() - .5) * maxDiff * 2;
         }
         if (jagged) return index % 2 === 1 ? -3 : 3;
         return 0;
-    }
+    };
 
-    var textCache = { };
+    var textCache = { },massCache = { };
 
-    function collectTextGarbage() {
+    function garbageCollection() {
         var now = Date.now();
+
         for (var i in textCache) {
             for (var j in textCache[i]) {
                 if (now - textCache[i][j].accessTime > 3000) {
@@ -1461,80 +1621,211 @@
                 }
             }
         }
-    }
+        for (i in massCache) {
+            if (now - massCache[i].accessTime > 3000) {
+                // Mass numbers unused for 3 seconds, delete it to restore memory
+                delete massCache[i];
+            }
+        }
 
-    function newTextCache(value, size, color, stroke, strokeColor) {
+        for (var i in loadedSkins) {
+            if (now - loadedSkins[i].accessTime > 60000) {
+                // Loaded skin image unused for 60 seconds, delete it to restore memory
+                delete loadedSkins[i];
+            }
+        }
+    };
+    function newTextCache(value, size) {
         var canvas = document.createElement('canvas'),
             ctx = canvas.getContext('2d'),
-            lineWidth = size * .1;
+            lineWidth = settings.showTextOutline ? settings.qualityRef.getTextLineWidth(size) : 0;
 
         // Why set font twice???
         ctx.font = size + 'px Noto Sans';
-        canvas.width = (ctx.measureText(value).width + lineWidth) + 3;
-        canvas.height = size + lineWidth;
+        canvas.width = ctx.measureText(value).width;
+        canvas.height = size * 1.2;
         ctx.font = size + 'px Noto Sans';
-        ctx.fillStyle = color || "#FFFFFF";
+        ctx.fillStyle = lineWidth === 0 && !settings.showColor ? "#000000" : "#FFFFFF";
         ctx.lineWidth = lineWidth;
-        ctx.strokeStyle = strokeColor || "#000000";
+        ctx.strokeStyle = "#000000";
 
-        stroke && ctx.strokeText(value, (lineWidth *= .5), size * .9);
-        ctx.fillText(value, lineWidth, size * .9);
+        (lineWidth > 0) && ctx.strokeText(value, 0, size);
+        ctx.fillText(value, 0, size);
 
         (!textCache[value]) && (textCache[value] = { });
         textCache[value][size] = {
             canvas: canvas,
-            color: color,
-            stroke: stroke,
-            strokeColor: strokeColor,
             accessTime: Date.now()
         };
         return canvas;
-    }
+    };
+    function newMassCache(size) {
+        var temp;
+        var canvasList = [
+                { c: (temp = document.createElement('canvas')), t: temp.getContext('2d'), w: NaN }, // 0
+                { c: (temp = document.createElement('canvas')), t: temp.getContext('2d'), w: NaN }, // 1
+                { c: (temp = document.createElement('canvas')), t: temp.getContext('2d'), w: NaN }, // 2
+                { c: (temp = document.createElement('canvas')), t: temp.getContext('2d'), w: NaN }, // 3
+                { c: (temp = document.createElement('canvas')), t: temp.getContext('2d'), w: NaN }, // 4
+                { c: (temp = document.createElement('canvas')), t: temp.getContext('2d'), w: NaN }, // 5
+                { c: (temp = document.createElement('canvas')), t: temp.getContext('2d'), w: NaN }, // 6
+                { c: (temp = document.createElement('canvas')), t: temp.getContext('2d'), w: NaN }, // 7
+                { c: (temp = document.createElement('canvas')), t: temp.getContext('2d'), w: NaN }, // 8
+                { c: (temp = document.createElement('canvas')), t: temp.getContext('2d'), w: NaN }, // 9
+            ],
+            i = 0,
+            lineWidth = settings.showTextOutline ? settings.qualityRef.getTextLineWidth(size) : 0,
+            ctx, canvas, height = size + lineWidth * 5 + 2;
 
-    function findMatch(value, size, color, stroke, strokeColor) {
-        if (!textCache[value]) return newTextCache(value, size, color, stroke, strokeColor); // No text with equal string
+        for ( ; i < 10; i++) {
+            canvas = canvasList[i].c;
+            ctx = canvasList[i].t;
+            ctx.font = size + 'px Noto Sans';
+            canvasList[i].w = (canvas.width = ctx.measureText(i).width + lineWidth * 3) - lineWidth * 3;
+            canvas.height = height;
+            ctx.font = size + 'px Noto Sans';
+            ctx.fillStyle = lineWidth === 0 && !settings.showColor ? "#000000" : "#FFFFFF";
+            ctx.lineWidth = lineWidth;
+            ctx.strokeStyle = "#000000";
+
+            (lineWidth > 0) && ctx.strokeText(i, lineWidth, size);
+            ctx.fillText(i, lineWidth, size);
+        }
+
+        massCache[size] = {
+            canvasList: canvasList,
+            height: height,
+            accessTime: Date.now()
+        };
+
+        return massCache[size];
+    };
+    function findTextMatch(value, size) {
+        if (!textCache[value]) return newTextCache(value, size); // No text with equal string
 
         var tolerance = ~~(size * .1),
             b;
 
         if ((b = textCache[value][size])) {
-            // Same style check
-            if (b.color === color && b.stroke === stroke && b.strokeColor === strokeColor) {
+            b.accessTime = Date.now();
+            return b.canvas;
+        }
+        var i = 1, j, l;
+
+        // Search with identical sized text
+        for ( ; i < tolerance; i++) {
+            // Larger than requested text sizes are better if no match is found
+            if ((b = textCache[value][size + i])) {
+                b.accessTime = Date.now();
+                return b.canvas;
+            }
+            // In any case check for smaller size too
+            if ((b = textCache[value][size - i])) {
                 b.accessTime = Date.now();
                 return b.canvas;
             }
         }
 
-        // Search with identical sized text
-        for (var i = 1; i < tolerance; i++) {
-            // Larger text sizes are better
-            if ((b = textCache[value][size + i])) {
-                // Same style check
-                if (b.color === color && b.stroke === stroke && b.strokeColor === strokeColor) {
-                    b.accessTime = Date.now();
-                    return b.canvas;
-                }
+        // No match
+        return newTextCache(value, size);
+    };
+    function findMassMatch(size) {
+        if (massCache[size]) {
+            massCache[size].accessTime = Date.now();
+            return massCache[size];
+        }
+
+        var b, tolerance = ~~(size * .1), i = 0;
+
+        // Identical search way as with text
+        for ( ; i < tolerance; i++) {
+            // Smaller than requested mass sizes are favored now
+            if ((b = massCache[size - i])) {
+                b.accessTime = Date.now();
+                return b;
             }
-            // In any case check for smaller size too
-            if ((b = textCache[value][size - i])) {
-                if (b.color === color && b.stroke === stroke && b.strokeColor === strokeColor) {
-                    b.accessTime = Date.now();
-                    return b.canvas;
-                }
+            if ((b = massCache[size + i])) {
+                b.accessTime = Date.now();
+                return b;
             }
         }
 
         // No match
-        return newTextCache(value, size, color, stroke, strokeColor);
-    }
+        return newMassCache(size);
+    };
+    function drawText(x, y, value, size, isMass) {
+        if (size > 5000) return; // Integrity check
 
-    function drawText(x, y, value, size, color, stroke, strokeColor, isMass) {
-        var identical = findMatch(value, size, color, stroke, strokeColor),
-            w = identical.width,
-            h = identical.height;
+        var identical;
+        if (isMass) {
+            identical = findMassMatch(size);
+            var str = value.toString(),
+                maxW = 0, nowW = 0,
+                i = 0,
+                currentNumber;
+            y -= identical.height * .5;
 
-        mainCtx.drawImage(identical, x - w * .5, y - h * .5, w, h);
-    }
+            // Measure half-width
+            for ( ; i < str.length; i++)
+                maxW += identical.canvasList[parseInt(str[i])].w;
+            x -= maxW * .5;
+
+            // Draw char by char
+            for (i = 0; i < str.length; i++) {
+                currentNumber = identical.canvasList[parseInt(str[i])];
+                mainCtx.drawImage(currentNumber.c, x, y);
+                x += currentNumber.w;
+            }
+        } else {
+            identical = findTextMatch(value, size),
+                w = identical.width,
+                h = identical.height;
+
+            mainCtx.drawImage(identical, x - w * .5, y - h * .5, w, h);
+        }
+    };
+    function buildQTree() {
+        if (.4 > drawZoom) qTree = null;
+        else {
+            var a = Number.POSITIVE_INFINITY,
+                b = Number.POSITIVE_INFINITY,
+                c = Number.NEGATIVE_INFINITY,
+                d = Number.NEGATIVE_INFINITY,
+                e = 0,
+                f = nodes.length,
+                added = [];
+
+            for (var i = 0; i < f; i++) {
+                var node = nodes[i];
+                if (!node) continue;
+                if (node.rigidPoints.length > 0) {
+                    e = Math.max(node.size, e);
+                    a = Math.min(node.x, a);
+                    b = Math.min(node.y, b);
+                    c = Math.max(node.x, c);
+                    d = Math.max(node.y, d);
+                    added.push(node);
+                }
+            }
+
+            qTree = Quad.init({
+                minX: a - (e + 100),
+                minY: b - (e + 100),
+                maxX: c + (e + 100),
+                maxY: d + (e + 100),
+                maxChildren: 64,
+                maxDepth: 4
+            });
+
+            f = added.length;
+            for (i = 0; i < c; i++) {
+                node = added[i];
+                if (!node) continue;
+                b = node.rigidPoints.length;
+                for (a = 0; a < b; ++a) qTree.insert(node.rigidPoints[a]);
+            }
+        }
+    };
     wHandle.setserver = function(arg) {
         if (CONNECT_TO != arg) {
             Disconnect();
@@ -1558,16 +1849,37 @@
         settings.showSkins = a;
     };
     wHandle.setColors = function(a) {
-        settings.showColor = a;
+        settings.showColor = !a;
+        if (settings.qualityRef.getTextLineWidth(100) === 0) {
+            // Reset caches since if setColors is false all text is black
+            textCache = { };
+            massCache = { };
+        }
     };
     wHandle.setNames = function(a) {
         settings.showNames = a;
+        drawLeaderboard();
     };
     wHandle.setSmooth = function(a) {
-        settings.fastRenderMax = a ? 1 : 0.4;
+        settings.fastRenderMax = a ? 4 : settings.qualityRef.smoothRender;
     };
     wHandle.setChatHide = function(a) {
         settings.showChat = a;
+        drawChat();
+    };
+    wHandle.setTextOutline = function(a) {
+        settings.showTextOutline = !a;
+        textCache = { };
+        massCache = { };
+    };
+    wHandle.setQuality = function(a) {
+        if (qualitySettings[a] && settings.quality !== a) {
+            settings.quality = a;
+            settings.qualityRef = qualitySettings[a];
+            settings.fastRenderMax = settings.fastRenderMax == 4 ? 4 : settings.qualityRef.smoothRender;
+            textCache = { };
+            massCache = { };
+        }
     };
     wHandle.spectate = function(a) {
         WsSend(UINT8_CACHE[1]);
@@ -1577,6 +1889,14 @@
     wHandle.play = function(a) {
         Play(a);
         hideESCOverlay();
-    }
+    };
+    wHandle.openSkinsList = function() {
+        if ($('#inPageModalTitle').text() != "Skins") {
+            $.get('include/gallery.php').then(function(data) {
+                $('#inPageModalTitle').text("Skins");
+                $('#inPageModalBody').html(data);
+            });
+        }
+    };
     wHandle.onload = loadInit;
 })(window, window.jQuery);

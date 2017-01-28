@@ -21,6 +21,7 @@
     <script src="js/reader.js"></script>
     <script src="js/writer.js"></script>
     <script src="js/vtr.js"></script>
+    <script src="js/quad.js"></script>
     <script src="js/gameclient.js"></script>
     <script src="js/shw14.js"></script>
     <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.4/js/bootstrap.min.js"></script>
@@ -88,13 +89,13 @@
                         <label>
                             <input type="checkbox" class="save" data-box-id="4" onchange="setColors($(this).is(':checked'));"> No colors</label>
                         <label>
-                            <input type="checkbox" class="save" data-box-id="7" onchange="setChatHide($(this).is(':checked'));"> Show Chat</label>
+                            <input type="checkbox" class="save" data-box-id="7" onchange="setChatHide($(this).is(':checked'));" checked> Show Chat</label>
                         <label>
-                            <input type="checkbox" class="save" data-box-id="8" onchange="setSmooth($(this).is(':checked'));"> Smooth Render</label>
+                            <input type="checkbox" class="save" data-box-id="8" onchange="setSmooth($(this).is(':checked'));" checked> Smooth Render</label>
                         <label>
-                            <input type="checkbox" class="save" data-box-id="7" onchange="setBorder($(this).is(':checked'));"> Show Border</label>
+                            <input type="checkbox" class="save" data-box-id="7" onchange="setBorder($(this).is(':checked'));" checked> Show Border</label>
                         <label>
-                            <input type="checkbox" class="save" data-box-id="8" onchange="setMapGrid($(this).is(':checked'));"> Show Map Grid</label>
+                            <input type="checkbox" class="save" data-box-id="8" onchange="setMapGrid($(this).is(':checked'));" checked> Show Map Grid</label>
                     </div>
                 </div>
             </form>

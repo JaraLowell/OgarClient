@@ -55,13 +55,19 @@ Reader.prototype = {
                     // 1110 xxxx  10xx xxxx  10xx xxxx
                     char2 = bytes[i++];
                     char3 = bytes[i++];
-                    out += String.fromCharCode(((c & 0x0F) << 12) |
-                        ((char2 & 0x3F) << 6) |
-                        ((char3 & 0x3F) << 0));
+                    out += String.fromCharCode(((c & 0x0F) << 12) | ((char2 & 0x3F) << 6) | ((char3 & 0x3F) << 0));
                 break;
             }
         }
-
+        return out;
+    },
+    getStringUCS: function() {
+        var out = '', b;
+        while ((b = this.view.getUint16(this._o,1)) != 0) {
+            this._o += 2;
+            out += String.fromCharCode(b);
+        }
+        this._o += 2;
         return out;
     }
 };
