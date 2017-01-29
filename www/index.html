@@ -57,6 +57,7 @@
 
                 <div class="form-group">
                     <input id="nick" class="form-control save" data-box-id="0" placeholder="Nick" maxlength="15" />
+                    <input id="myskin" class="form-control save" data-box-id="50" type="hidden" />
                     <select id="gamemode" class="form-control" onchange="setserver($(this).val());" required>
                         <option selected disabled>Gamemode:</option>
                         <option value="ogar.mivabe.nl:44411">Jara's Server</option>
@@ -66,9 +67,10 @@
 
                 <div class="form-group">
                     <div class="mb-10">
-                      <!--  <a data-toggle="modal" data-target="#inPageModal" onclick="openSkinsList();" class="btn-primary btn btn-info" role="button" style="background-color: #13b11f; border: 1px #098213; width: 100%;">Galeria de skins</a>--->
+                        <a data-toggle="modal" data-target="#inPageModal" onclick="openSkinsList();" class="btn-primary btn btn-info" role="button" style="width: 100%;">Skins Gallery</a>
                     </div>
-                    <button type="submit" id="play-btn" onclick="play(document.getElementById('nick').value); return false;" class="btn btn-play btn-primary btn-needs-server">Play</button>
+
+                    <button type="button" id="play-btn" onclick="play(document.getElementById('nick').value); return false;" class="btn btn-play btn-primary btn-needs-server">Play</button>
                     <button onclick="$('#settings, #instructions').toggle(); return false;" class="btn btn-info btn-settings" id="settings-btn"><i class="glyphicon glyphicon-cog"></i></button>
                     <br clear="both" />
                 </div>

@@ -66,6 +66,13 @@ Writer.prototype = {
         }
         this._b = this._b.concat(utf8);
     },
+    setStringUNC: function(s) {
+        var unicode = [];
+        for (var i = 0, l = s.length; i < l; ++i) {
+            unicode.push(s.charCodeAt(i));
+        }
+        this._b = this._b.concat(unicode);
+    },
     build: function() {
         return new Uint8Array(this._b);
     }

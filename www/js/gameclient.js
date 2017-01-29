@@ -25,7 +25,7 @@
         });
     });
     var CONNECT_TO
-      , SKIN_URL = "./skins/"
+      , SKIN_URL = "http://ogar.mivabe.nl/skins/"
       , USE_HTTPS = "https:" == wHandle.location.protocol
       , BORDER_DEFAULT = {top: -2E3, left: -2E3, right: 2E3, bottom: 2E3}
       , PI_2 = Math.PI * 2
@@ -35,6 +35,9 @@
       , FPS_MAXIMUM = 1000
       , ws = null
       , touches = []
+      , touchStartX = 0
+      , touchStartY = 0
+      , touchMove = false
       , disconnectDelay = 1
       , UINT8_CACHE = {
             1:  new Uint8Array([1]),
@@ -397,12 +400,20 @@
         else ws.send(data);
     };
     function Play(name) {
+        // check if skin field is filled!
+        var skin = $('#myskin').val();
+        userName = name;
+        if(skin != "") name = '<' + skin + '>' + name;
         log.debug("Playing");
         var writer = new Writer(true);
         writer.setUint8(0x00);
         writer.setStringUTF8(name);
-        userName = name;
         WsSend(writer);
+        if (null != wHandle.localStorage) {
+            // Lets store the skin value on sign in if it not same as stored value
+            var value = wHandle.localStorage.getItem("checkbox-50");
+            if( value != skin ) wHandle.localStorage.setItem("checkbox-50", skin);
+        }
     };
     function onTouchStart(e) {
         for (var i = 0; i < e.changedTouches.length; i++) {
@@ -668,11 +679,6 @@
         allowGETipSet: false // Whether index.html?ip=abc is accepted (not implemented)
     };
 
-    // Touches
-    var touchStartX = 0,
-        touchStartY = 0,
-        touchMove = false;
-
     // Load local storage
     if (null != wHandle.localStorage) {
         wjQuery(window).load(function() {
@@ -688,7 +694,7 @@
             });
             wjQuery(".save").change(function() {
                 var id = $(this).data('box-id');
-                var value = (id == 0) ? $(this).val() : $(this).prop('checked');
+                var value = (id == 0 || id == 50) ? $(this).val() : $(this).prop('checked');
                 wHandle.localStorage.setItem("checkbox-" + id, value);
             });
         });
@@ -855,38 +861,7 @@
             rawMouseX = event.clientX;
             rawMouseY = event.clientY;
         };
-
-        setTimeout(function() {
-            // Auto quality setting
-            var a = mainCanvas.width = wHandle.innerWidth,
-                b = mainCanvas.height = wHandle.innerHeight;
-            var qualityOutput = Math.min(((a * b) / 178000), 20); // Output 1-20
-            switch (Math.round(qualityOutput)) {
-                case 20: case 19: case 18: case 17:
-                    $('#quality').val('retina');
-                    settings.qualityRef = qualitySettings[settings.quality = 'retina'];
-                    break;
-                case 16: case 15: case 14: case 13: case 12: case 11:
-                    $('#quality').val('high');
-                    settings.qualityRef = qualitySettings[settings.quality = 'high'];
-                    break;
-                case 10: case 9: case 8: case 7: case 6: case 5:
-                    $('#quality').val('medium');
-                    settings.qualityRef = qualitySettings[settings.quality = 'medium'];
-                    break;
-                case 4: case 3:
-                    $('#quality').val('low');
-                    settings.qualityRef = qualitySettings[settings.quality = 'low'];
-                    break;
-                default:
-                    $('#quality').val('mobile');
-                    settings.qualityRef = qualitySettings[settings.quality = 'mobile'];
-                    break;
-            }
-            log.debug("Auto-quality " + settings.quality + " for window size " + mainCanvas.width + "x" +
-                mainCanvas.height + ", quality value " + Math.round(qualityOutput) + " (real " + qualityOutput + "), view multiplier " + viewMultiplier());
-        }, 100);
-
+ 
         setInterval(function() {
             // Mouse update
             SendMouseMove((rawMouseX - mainCanvas.width / 2) / drawZoom + centerX,
@@ -1180,7 +1155,7 @@
 
         // Background
         mainCtx.save();
-        mainCtx.fillStyle = settings.darkTheme ? "rgba(0,0,0,0.5)" : "#F2FBFF";
+        mainCtx.fillStyle = settings.darkTheme ? "rgba(30,30,30,0.5)" : "rgba(230,230,255,0.8)";
         mainCtx.fillRect(0, 0, cW, cH);
         mainCtx.restore();
 
@@ -1233,6 +1208,7 @@
         if (latency !== -1) topText += ", " + latency + "ms ping";
 
         mainCtx.fillStyle = settings.darkTheme ? "#FFFFFF" : "#000000";
+
         if (userScore > 0) {
             var scoreSize = 32 * viewMult;
             mainCtx.font = ~~scoreSize + "px Noto Sans";
@@ -1519,11 +1495,16 @@
                 jagged = this.isVirus,
                 fill = mainCtx.createRadialGradient(this.x,this.y,0,this.x,this.y,this.size);
 
-            mainCtx.globalCompositeOperation = "lighter";
-            mainCtx.lineWidth = settings.qualityRef.cellOutline ? (this.isEjected ? 0 : this.size > 20 ? Math.max(this.size * .01, 10) : 0) : 0;
+            settings.darkTheme ? mainCtx.globalCompositeOperation = "lighter" : mainCtx.globalCompositeOperation = "luminosity";
+
+            mainCtx.lineWidth = settings.qualityRef.cellOutline ? (this.isEjected ? 0 : this.size > 20 ? Math.max(this.size * .05, 10) : 0) : 0;
             mainCtx.lineCap = "round";
             mainCtx.lineJoin = jagged ? "miter" : "round";
-            this.isPellet ? fill.addColorStop(0, 'rgba(255,255,255,0.6)') : fill.addColorStop(0, 'rgba(0,0,0,0.4)');
+
+            fill.addColorStop(0, 'rgba(0,0,0,0.4)');
+            if(this.isPellet)
+                settings.darkTheme ? fill.addColorStop(0, 'rgba(0,0,0,0.6)') : fill.addColorStop(0, 'rgba(255,255,255,0.6)');
+
             fill.addColorStop(1, this.color);
 
             mainCtx.fillStyle = settings.showColor ? fill : "#FFFFFF";
@@ -1552,7 +1533,7 @@
                 );
                 mainCtx.fill();
                 mainCtx.stroke();
-                this.drawSkin();
+                if(!this.isPellet) this.drawSkin();
                 mainCtx.closePath();
             } else {
                 this.rigidPoints = [];
@@ -1564,7 +1545,7 @@
                     mainCtx.arc(this.x, this.y, this.size - mainCtx.lineWidth * .5 + .5, 0, PI_2, false);
                     mainCtx.fill();
                     settings.qualityRef.cellOutline && mainCtx.stroke();
-                    this.drawSkin();
+                    if(!this.isPellet) this.drawSkin();
                     mainCtx.closePath();
                 }
             }
@@ -1585,6 +1566,7 @@
                 if (0 != loadedSkins[skin].width && loadedSkins[skin].complete) {
                     loadedSkins[skin].accessTime = Date.now();
                     mainCtx.save();
+                    mainCtx.globalAlpha=0.8;
                     mainCtx.clip();
                     mainCtx.drawImage(loadedSkins[skin], this.x - this.size, this.y - this.size, 2 * this.size, 2 * this.size);
                     mainCtx.restore();
@@ -1861,7 +1843,7 @@
         drawLeaderboard();
     };
     wHandle.setSmooth = function(a) {
-        settings.fastRenderMax = a ? 4 : settings.qualityRef.smoothRender;
+        settings.fastRenderMax = a ? 0.4 : settings.qualityRef.smoothRender;
     };
     wHandle.setChatHide = function(a) {
         settings.showChat = a;
