@@ -96,6 +96,8 @@
                             <input type="checkbox" class="save" data-box-id="7" onchange="setBorder($(this).is(':checked'));" checked> Show Border</label>
                         <label>
                             <input type="checkbox" class="save" data-box-id="8" onchange="setMapGrid($(this).is(':checked'));" checked> Show Map Grid</label>
+                        <label>
+                            <br>Draw quality <span id="range">high</span><input type="range" min="0" max="4" value="3" step="1" onchange="setQuality($(this).val())"></label>
                     </div>
                 </div>
             </form>

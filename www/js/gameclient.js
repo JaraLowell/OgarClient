@@ -662,9 +662,9 @@
         showMapGrid: true,
         showBorder: true,
         darkTheme: true,
-        fastRenderMax: .4,
+        fastRenderMax: 0.4,
         quality: 'high',
-        qualityRef: qualitySettings['medium'],
+        qualityRef: qualitySettings['high'],
         allowGETipSet: false // Whether index.html?ip=abc is accepted (not implemented)
     };
 
@@ -1873,10 +1873,16 @@
         massCache = { };
     };
     wHandle.setQuality = function(a) {
-        if (qualitySettings[a] && settings.quality !== a) {
-            settings.quality = a;
-            settings.qualityRef = qualitySettings[a];
-            settings.fastRenderMax = settings.fastRenderMax == 4 ? 4 : settings.qualityRef.smoothRender;
+        var b = 'retina';
+        if (a == 0) b = 'mobile';
+        if (a == 1) b = 'low';
+        if (a == 2) b = 'medium';
+        if (a == 3) b = 'high';
+        $('#range').text(b);
+        if (qualitySettings[b] && settings.quality !== b) {
+            settings.quality = b;
+            settings.qualityRef = qualitySettings[b];
+            settings.fastRenderMax = settings.fastRenderMax < 0.3 ? 0.3 : settings.qualityRef.smoothRender;
             textCache = { };
             massCache = { };
         }
