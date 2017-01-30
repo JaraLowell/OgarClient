@@ -48,6 +48,7 @@
             22: new Uint8Array([22]),
             23: new Uint8Array([23]),
             24: new Uint8Array([24]),
+            25: new Uint8Array([25]),
             254:new Uint8Array([254]) };
 
     function Disconnect() {
