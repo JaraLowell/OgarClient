@@ -297,6 +297,12 @@
                         nodesID[id] = node;
                         nodes.push(node);
                     }
+
+                    if (-1 != myNodes.indexOf(id))
+                    {
+                        myposx = border.right + x;
+                        myposy = border.bottom + y;
+                    }
                 }
 
                 // Dissapear records
@@ -551,6 +557,8 @@
         mapCenterSet = false,
         rawMouseX = 0,
         rawMouseY = 0,
+        myposx = null,
+        myposy = null,
         border = BORDER_DEFAULT,
         knownSkins = [],
         loadedSkins = [],
@@ -1206,8 +1214,10 @@
 
         // Score & FPS drawing
         var topText = ~~fps + " FPS",
-            topSize = 20 * viewMult;
+            topSize = 20 * viewMult,
+            PosText = "";
         if (latency !== -1) topText += ", " + latency + "ms ping";
+        if (myposx != null) PosText += "X:" + myposx + " / Y:" + myposy;
 
         mainCtx.fillStyle = settings.darkTheme ? "#FFFFFF" : "#000000";
 
@@ -1217,6 +1227,7 @@
             mainCtx.fillText("Score: " + userScore, 2, 32 * viewMult);
             mainCtx.font = ~~topSize + "px Ubuntu";
             mainCtx.fillText(topText, 2, 58 * viewMult);
+            mainCtx.fillText(PosText, 2, 178 * viewMult);
             settings.qualityRef.drawStat && serverStatCanvas && mainCtx.drawImage(serverStatCanvas, 2, 60 * viewMult);
         } else {
             mainCtx.font = ~~topSize + "px Ubuntu";
@@ -1318,8 +1329,8 @@
         size: 0,
         name: 0,
         color: "#FFFFFF",
-        nameSkin: "",
-        skin: "",
+        nameSkin: "default",
+        skin: "default",
         updateStamp: -1,
         birthStamp: -1,
         deathStamp: -1,
@@ -1367,7 +1378,7 @@
             this.name = name;
         },
         setSkin: function(skin) {
-            this.skin = skin[0] === "%" ? skin.replace("%", "") : skin;
+            this.skin = skin[0] == "%" ? skin.replace("%", "") : skin;
         },
         setColor: function(color) {
             this.color = color;
