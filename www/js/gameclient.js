@@ -685,12 +685,13 @@
             wjQuery(".save").each(function() {
                 var id = $(this).data("box-id");
                 var value = wHandle.localStorage.getItem("checkbox-" + id);
-                if (value && value == "true" && 0 != id) {
+                if (value && value == "true" && (0 != id || 50 != id)) {
                     $(this).prop("checked", "true");
                     $(this).trigger("change");
-                } else if (id == 0 && value != null) {
+                } else if ((id == 0 || id == 50) && value != null) {
                     $(this).val(value);
                 }
+                log.debug("Setting " + id + " set to " + value);
             });
             wjQuery(".save").change(function() {
                 var id = $(this).data('box-id');
@@ -699,7 +700,8 @@
             });
         });
     }
-
+/*
+    Not in use right now...
     // Load known skin list
     wjQuery.ajax({
         type: "POST",
@@ -717,7 +719,7 @@
             }
         }
     });
-
+*/
     function hideESCOverlay() {
         escOverlay = false;
         wjQuery("#overlays").hide();
@@ -861,7 +863,7 @@
             rawMouseX = event.clientX;
             rawMouseY = event.clientY;
         };
- 
+
         setInterval(function() {
             // Mouse update
             SendMouseMove((rawMouseX - mainCanvas.width / 2) / drawZoom + centerX,
@@ -876,6 +878,7 @@
         };
 
         wHandle.onresize();
+        showESCOverlay();
 
         log.info("Loaded, took " + (Date.now() - LOAD_START) + " ms");
 
@@ -883,7 +886,6 @@
             window.requestAnimationFrame(drawLoop);
         else
             setInterval(drawGame, 1E3 / FPS_MAXIMUM);
-        showESCOverlay();
     };
     function getChatAlpha() {
         if (isTyping) return 1;
@@ -1113,7 +1115,7 @@
         mainCtx.textAlign = 'center';
         mainCtx.textBaseline = 'middle';
         mainCtx.font = 0.6 * gridr + 'px Noto Sans';
-        mainCtx.fillStyle = 'rgba(66,139,202,0.25)';
+        mainCtx.fillStyle = '#428BCA';
         for(var i = 0; 5 > i; i++) {
             for(var n = 0; 5 > n; n++) {
                 mainCtx.fillText(gridc[i] + (n + 1), gridl + gridr * n + gridr / 2, gridt + gridb * i + gridb / 2)
@@ -1121,7 +1123,7 @@
         };
         mainCtx.globalAlpha = 1.0;
         mainCtx.lineWidth = 80;
-        mainCtx.strokeStyle = settings.darkTheme ? "rgba(26,26,26,0.15)" : "rgba(236,236,236,0.15)";
+        mainCtx.strokeStyle = settings.darkTheme ? "#1A1A1A" : "#EAEAEA";
         for(i = 0; 5 > i; i++) {
             for(n = 0; 5 > n; n++) {
                 mainCtx.strokeRect(gridl + gridr * n, gridt + gridb * i, gridr, gridb)
@@ -1324,6 +1326,7 @@
         appStamp: -1,
         nx: 0,
         ny: 0,
+        ban: 0,
         nSize: 0,
         killer: null,
         rigidPoints: [],
@@ -1471,10 +1474,14 @@
             this.appStamp = time;
 
             mainCtx.save();
-            this.drawShape(dt);
+
+            if(this.isAgitated && settings.qualityRef.smoothRender < 0.5)
+                this.drawVirus(this.x,this.y,0.75,( time / 640 ),0);
+            else
+                this.drawShape(dt);
 
             // Text drawing
-            if (this.notPellet) {
+            if (this.notPellet && !this.isVirus) {
                 var nameDraw = settings.showNames && this.name !== "" && !this.isVirus;
                 if (nameDraw) drawText(this.x, this.y, this.name, this._nameSize, false);
 
@@ -1489,6 +1496,39 @@
                 }
             }
             mainCtx.restore();
+        },
+        drawVirus: function(x,y,s,r,k) {
+            // Pretty wirly thingy for surprice cells :3 (only if quility is high or higher)
+            var ban = 0;
+            var a,b,c,px,py,r1,r2,han;
+            han=30;
+            if(k>2) {
+                a=(k*5+200)%360;
+                mainCtx.globalCompositeOperation = "lighter";
+                mainCtx.fillStyle="hsla("+a+",60%,50%,0.1)";
+                mainCtx.beginPath();
+                mainCtx.arc(x,y,han*s*2,0,Math.PI*2,0);
+                mainCtx.fill();
+                mainCtx.globalCompositeOperation = "source-over";
+                mainCtx.fillStyle="hsl("+a+",60%,30%)";
+                mainCtx.beginPath();
+                mainCtx.arc(x,y,han*s,0,Math.PI*2,0);
+                mainCtx.fill();
+            }
+            ban++;
+            if(s<0.3)return;
+            k++;
+            r1=0.87;
+            r2=1-r1;
+            r+=ban;
+            px=Math.cos(r);
+            py=Math.sin(r);
+            this.drawVirus(x+px*han*r2*s,y+py*han*r2*s,s*r1,r*1.2,k);
+            r+=ban;
+            px=Math.cos(r);
+            py=Math.sin(r);
+            r1=0.82;
+            this.drawVirus(x+px*han*(1+r1)*s,y+py*han*(1+r1)*s,s*r1,-r,k);
         },
         drawShape: function(dt) {
             var complex = this.wasComplexDrawing = settings.fastRenderMax <= drawZoom,
@@ -1542,7 +1582,7 @@
                     mainCtx.drawImage(this._meCache, this.x - this.size, this.y - this.size, this.size * 2, this.size * 2);
                 else {
                     mainCtx.beginPath();
-                    mainCtx.arc(this.x, this.y, this.size - mainCtx.lineWidth * .5 + .5, 0, PI_2, false);
+                    mainCtx.arc(this.x, this.y, Math.abs(this.size - mainCtx.lineWidth * 0.5) + 0.5, 0, PI_2, false);
                     mainCtx.fill();
                     settings.qualityRef.cellOutline && mainCtx.stroke();
                     if(!this.isPellet) this.drawSkin();
@@ -1556,7 +1596,7 @@
             var skin = this.skin || this.nameSkin;
 
             if (settings.showSkins && skin != '') { // && -1 !== knownSkins.indexOf(skin)) {
-                skin = skin.substring(1);
+                if (skin[0] == '%')skin = skin.substring(1);
                 if (!loadedSkins.hasOwnProperty(skin)) {
                     // Download skin
                     loadedSkins[skin] = new Image;
