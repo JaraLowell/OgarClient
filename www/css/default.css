@@ -4,8 +4,14 @@ body {
     margin: 0;
     overflow: hidden;
     font-family: Ubuntu;
+    background-color: #000000;
 }
-
+hr {
+    height: 1px;
+    color: rgba(36, 51, 66, 0.9);
+    background-color: rgba(36, 51, 66, 0.9);
+    border: none;
+}
 /* IDs */
 #overlays {
     display:none; 
@@ -14,16 +20,13 @@ body {
     right: 0; 
     top: 0; 
     bottom: 0; 
-    background-color: 
-    rgba(0,0,0,0.5); 
+    background-color: rgba(0,0,0,0.5);
     z-index: 200;
 }
-
 #title {
     padding: 10px;
     color: #428BCA;
 }
-
 #canvas {
     position: absolute;
     left: 0;
@@ -33,36 +36,124 @@ body {
     width: 100%;
     height: 100%;
 }
-
 #connecting {
     display:none;
-    position: absolute; 
-    left: 0; 
-    right: 0; 
-    top: 0; 
-    bottom: 0; 
-    z-index: 100; 
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 0;
+    bottom: 0;
+    z-index: 100;
     background-color: rgba(0,0,0,0.5);
 }
-
 #nick {
     width: 65%;
     float: left;
 }
-
 #gamemode {
     width: 33%;
     float: right;
 }
-
-hr {
-    height: 1px;
-    color: rgba(36, 51, 66, 0.9);
-    background-color: rgba(36, 51, 66, 0.9);
-    border: none;
+#advert {
+    display:none;
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 0;
+    bottom: 0;
+    background-color: rgba(0,0,0,0.5);
+    z-index: 300;
 }
-
-#helloDialog {
+#stats {
+    position: relative;
+    width: 350px;
+    height: 581px;
+    padding: 0 0 300px 0;
+    overflow: hidden;
+    color: #FFF
+}
+#statsPelletsContainer,#statsTimeAliveContainer,#statsHighestMassContainer,#statsCellsEatenContainer,#statsVirusContainer,#statsPlayerContainer {
+    position: absolute;
+    width: 120px;
+    height: 70px;
+    background-color: rgba(42, 64, 92, 0.23);
+    border-radius: 5px
+}
+#statsHighestMassContainer {
+    top: 30px;
+    right: 45px
+}
+#statsTimeAliveContainer {
+    top: 30px;
+    left: 45px
+}
+#statsPelletsContainer {
+    top: 120px;
+    left: 45px
+}
+#statsCellsEatenContainer {
+    top: 120px;
+    right: 45px;
+}
+#statsVirusContainer {
+    top: 210px;
+    left: 45px
+}
+#statsPlayerContainer {
+    top: 210px;
+    right: 45px;
+}
+#statsPellets {
+    position: absolute;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    right: 0;
+    margin: auto
+}
+#statsText,#statsTextMass,#statsTextTime,#statsTextFood,#statsTextCell,#statsTextVirus,#statsTextPlayer {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    line-height: 40px;
+    font-size: 23px
+}
+#statsSubtext {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    line-height: 40px;
+    font-size: 12px;
+    text-align: center
+}
+#statsChartText {
+    position: absolute;
+    left: 20px;
+    bottom: 250px;
+    line-height: 40px;
+    font-size: 40px
+}
+#statsChartText,#statsText,#statsTextMass,#statsTextTime,#statsTextFood,#statsTextCell,#statsTextVirus,#statsTextPlayer {
+    cursor: default;
+    color: #427BAB;
+    text-align: center;
+    font-weight: bold
+}
+#statsContinue {
+    left: 25px;
+    right: 25px;
+    width: 300px;
+    bottom: 295px
+}
+#statsGraph {
+    position: absolute;
+    top: 24px;
+    right: 24px
+}
+#helloDialog, #scorebox {
     width: 400px;
     background: rgba(9, 13, 23, 0.91) url('../img/bg_sidebar.gif') repeat scroll left top;
     margin: 10px auto;
@@ -76,7 +167,6 @@ hr {
     transform: translate(-50%, -50%);
     border-radius: 5px;
 }
-
 #chat_textbox {
     -webkit-transition: all .5s ease-in-out;
     -moz-transition: all .5s ease-in-out;
@@ -93,30 +183,26 @@ hr {
     text-indent: 12px;
     left: 10px;
     width: 300px;
+    border-radius: 5px;
 }
-
 #chat_textbox:focus {
     background: rgba(0, 0, 0, .5);
 }
-
 #footer {
     text-align: center;
     margin-bottom: 10px;
     margin-top: -10px;
 }
-
 #play-btn {
     width: 85%;
     float: left;
 }
-
 #settings-btn {
     width: 13%;
     float: right;
     background-color: #13b11f;
     border: 1px #098213;
 }
-
 #spectate-btn {
     margin-top: -5px;
 }
@@ -126,11 +212,9 @@ hr {
     margin-right: 10px;
     border-radius: 0px;
 }
-
 .mb-10 {
     margin-bottom: 10px;
 }
-
 .loader {
     border: 6px solid #f3f3f3;
     border-top: 6px solid #3498db;
@@ -139,12 +223,10 @@ hr {
     height: 40px;
     animation: spin 2s linear infinite;
 }
-
 .center {
     display: table;
     margin: 0 auto;
 }
-
 @keyframes spin {
     0% { transform: rotate(0deg); }
     100% { transform: rotate(360deg); }

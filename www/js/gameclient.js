@@ -92,6 +92,8 @@
         serverStats = null;
         leaderboardCanvas = null;
         serverStatCanvas = null;
+        stats = {virus: 0, pellet: 0, cells: 0, players: 0, score: 0 };
+        gamestart = null;
     };
     function Connect(to) {
         if (ws) Disconnect();
@@ -251,6 +253,7 @@
                     killer = reader.getUint32();
                     killed = reader.getUint32();
                     if (!nodesID.hasOwnProperty(killer) || !nodesID.hasOwnProperty(killed)) continue;
+                    OnCellEaten(killer, killed);
                     nodesID[killed].killer = nodesID[killer];
                     nodesID[killed].destroy();
                 }
@@ -282,7 +285,7 @@
 
                     if (updSkin) skin = reader.getStringUTF8();
                     if (updName) name = reader.getStringUTF8();
-
+                    if (name != null && skin == null) skin = '%default';
                     if (nodesID.hasOwnProperty(id)) {
                         node = nodesID[id];
                         node.nx = x;
@@ -408,6 +411,7 @@
     };
     function Play(name) {
         // check if skin field is filled!
+        stats = {virus: 0, pellet: 0, cells: 0, players: 0, score: 0 };
         var skin = $('#myskin').val();
         userName = name;
         if(skin != "") name = '<' + skin + '>' + name;
@@ -421,6 +425,7 @@
             var value = wHandle.localStorage.getItem("checkbox-50");
             if( value != skin ) wHandle.localStorage.setItem("checkbox-50", skin);
         }
+        gamestart = Date.now();
     };
     function onTouchStart(e) {
         for (var i = 0; i < e.changedTouches.length; i++) {
@@ -468,6 +473,19 @@
             }
         }
     };
+    function OnCellEaten(predator, prey) {
+        if (-1 != myNodes.indexOf(predator)) {
+            // var eatsize = nodesID[prey].size;
+            if(nodesID[prey].isPellet) 
+                stats.pellet++;
+            else if(nodesID[prey].isVirus)
+                stats.virus++;
+            else if(nodesID[prey].name == 0)
+                stats.cells++;
+            else
+                stats.players++;
+        }
+    }
     function SendChat(a) {
         if (a.length > 200) {
             chatMessages.push({
@@ -595,16 +613,9 @@
         leftVector = new Vector2(0, 0),
         splitIcon = new Image,
         ejectIcon = new Image,
-        pressed = {
-            space: false,
-            w: false,
-            e: false,
-            r: false,
-            t: false,
-            p: false,
-            q: false,
-            esc: false
-        };
+        gamestart = null,
+        stats = {virus: 0, pellet: 0, cells: 0, players: 0, score: 0},
+        pressed = {space: false, w: false, e: false, r: false, t: false, p: false, q: false, esc: false};
 
     splitIcon.src = "img/split.png";
     ejectIcon.src = "img/feed.png";
@@ -737,6 +748,7 @@
         userNickName = null;
         wjQuery("#overlays").fadeIn(350);
     };
+
     function loadInit() {
         mainCanvas = document.getElementById('canvas');
         mainCtx = mainCanvas.getContext('2d');
@@ -961,7 +973,7 @@
 
         chatCanvas.width = aW;
         chatCanvas.height = l * 20 + 20;
-        ctx.fillStyle = "#000000";
+        ctx.fillStyle = "rgba(0,0,0,0)";
         ctx.globalAlpha = alpha * .2;
         ctx.fillRect(0, 0, chatCanvas.width, chatCanvas.height);
 
@@ -1278,6 +1290,7 @@
             //console.log(rl, ncX, ncY);
             if (rl > 0) {
                 userScore = Math.max(newScore, userScore);
+                if(userScore > stats.score) stats.score = userScore;
                 ncX /= rl;
                 ncY /= rl;
                 centerX += (~~ncX - centerX) * .4;
@@ -1329,8 +1342,8 @@
         size: 0,
         name: 0,
         color: "#FFFFFF",
-        nameSkin: "default",
-        skin: "default",
+        nameSkin: "",
+        skin: "",
         updateStamp: -1,
         birthStamp: -1,
         deathStamp: -1,
@@ -1400,7 +1413,7 @@
                 _cY = centerY;
                 _cZoom = viewZoom;
                 userScore = 0;
-                showESCOverlay();
+                drawmystats();
             }
             deadNodes.push(this);
             this.deathStamp = time;
@@ -1642,6 +1655,24 @@
 
     var textCache = { },massCache = { };
 
+    function timeword(d) {
+        d = Number(d);
+        var h = Math.floor(d / 3600);
+        var m = Math.floor(d % 3600 / 60);
+        var s = Math.floor(d % 3600 % 60);
+        return ((h > 0 ? h + ":" + (m < 10 ? "0" : "") : "") + m + ":" + (s < 10 ? "0" : "") + s);
+    };
+    function drawmystats() {
+        // Fill Stats
+        var timenow = Date.now();
+        document.getElementById('statsTextMass').innerHTML = stats.score;
+        document.getElementById('statsTextTime').innerHTML = (timeword((timenow - gamestart) / 1000));
+        document.getElementById('statsTextFood').innerHTML = stats.pellet;
+        document.getElementById('statsTextCell').innerHTML = stats.cells;
+        document.getElementById('statsTextVirus').innerHTML = stats.virus;
+        document.getElementById('statsTextPlayer').innerHTML = stats.players;
+        $('#advert').show();
+    };
     function garbageCollection() {
         var now = Date.now();
 
@@ -1919,6 +1950,10 @@
             textCache = { };
             massCache = { };
         }
+    };
+    wHandle.closeStats = function (w) {
+        $('#advert').hide();
+        showESCOverlay();
     };
     wHandle.spectate = function(a) {
         WsSend(UINT8_CACHE[1]);
