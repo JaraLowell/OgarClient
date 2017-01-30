@@ -702,7 +702,6 @@
         });
     }
 /*
-    Not in use right now...
     // Load known skin list
     wjQuery.ajax({
         type: "POST",
@@ -948,7 +947,7 @@
 
         for ( ; i < l; i++) {
             msg = chatMessages[i];
-            ctx.font = '18px Noto Sans';
+            ctx.font = '18px Ubuntu';
             aW = Math.max(aW, 20 + ctx.measureText(msg.name + ":").width + ctx.measureText(" " + msg.message).width);
         }
 
@@ -968,13 +967,13 @@
 
             // Name
             ctx.fillStyle = msg.nameColor;
-            ctx.font = '18px Noto Sans';
+            ctx.font = '18px Ubuntu';
             fW = ctx.measureText(msg.name + divider).width;
-            ctx.font = '18px Noto Sans';
+            ctx.font = '18px Ubuntu';
             ctx.fillText(msg.name + divider, 10, 5 + 20 * (i + 1));
 
             // Message
-            ctx.font = '18px Noto Sans';
+            ctx.font = '18px Ubuntu';
             if(!msg.server) ctx.fillStyle = "#FFFFFF";
             ctx.fillText(" " + msg.message, 10 + fW, 5 + 20 * (i + 1));
         }
@@ -988,7 +987,7 @@
         if (!serverStatCanvas) serverStatCanvas = document.createElement('canvas');
         var ctx = serverStatCanvas.getContext('2d'), a, b, c;
 
-        ctx.font = '14px Noto Sans';
+        ctx.font = '14px Ubuntu';
         serverStatCanvas.width = 4 + Math.max(
             ctx.measureText(serverStats.name).width,
             ctx.measureText(serverStats.mode).width,
@@ -998,7 +997,7 @@
         );
         serverStatCanvas.height = 85;
 
-        ctx.font = '14px Noto Sans';
+        ctx.font = '14px Ubuntu';
         ctx.fillStyle = settings.darkTheme ? "#AAAAAA" : "#000000";
         ctx.globalAlpha = 1;
         ctx.fillText(serverStats.name, 2, 16);
@@ -1030,7 +1029,7 @@
 
         ctx.globalAlpha = 1;
         ctx.fillStyle = "#FFFFFF";
-        ctx.font = "30px Noto Sans";
+        ctx.font = "30px Ubuntu";
         ctx.fillText("Leaderboard", 100 - ctx.measureText("Leaderboard").width / 2, 40);
 
         if (leaderboardType === 0x32) {
@@ -1047,7 +1046,7 @@
         } else {
             // Text-based
             var o, me = false, w, start,colors = ['#FF5656','#EC6856','#D97B56','#C68E56','#B3A156','#A1B356','#8EC656','#7BD956','#68EC56','#56FF56','#66FF66','#77FF77','#88FF88','#99FF99','#AAFFAA','#BBFFBB','#CCFFCC','#DDFFDD','#EEFFEE','#FFFFFF','#FFFFFF','#FFFFFF','#FFFFFF','#FFFFFF','#FFFFFF'];
-            ctx.font = "20px Noto Sans";
+            ctx.font = "20px Ubuntu";
             for ( ; i < l; i++) {
                 o = leaderboard[i];
                 if (leaderboardType === 0x31) {
@@ -1115,7 +1114,7 @@
         mainCtx.globalAlpha = 0.2;
         mainCtx.textAlign = 'center';
         mainCtx.textBaseline = 'middle';
-        mainCtx.font = 0.6 * gridr + 'px Noto Sans';
+        mainCtx.font = 0.6 * gridr + 'px Ubuntu';
         mainCtx.fillStyle = '#428BCA';
         for(var i = 0; 5 > i; i++) {
             for(var n = 0; 5 > n; n++) {
@@ -1214,13 +1213,13 @@
 
         if (userScore > 0) {
             var scoreSize = 32 * viewMult;
-            mainCtx.font = ~~scoreSize + "px Noto Sans";
+            mainCtx.font = ~~scoreSize + "px Ubuntu";
             mainCtx.fillText("Score: " + userScore, 2, 32 * viewMult);
-            mainCtx.font = ~~topSize + "px Noto Sans";
+            mainCtx.font = ~~topSize + "px Ubuntu";
             mainCtx.fillText(topText, 2, 58 * viewMult);
             settings.qualityRef.drawStat && serverStatCanvas && mainCtx.drawImage(serverStatCanvas, 2, 60 * viewMult);
         } else {
-            mainCtx.font = ~~topSize + "px Noto Sans";
+            mainCtx.font = ~~topSize + "px Ubuntu";
             mainCtx.fillText(topText, 2, 22 * viewMult);
             settings.qualityRef.drawStat && serverStatCanvas && mainCtx.drawImage(serverStatCanvas, 2, 24 * viewMult);
         }
@@ -1399,7 +1398,7 @@
         updatePoints: function(animated, jagged, dt) {
             // Update points
             var pointAmount = this.size,
-                minPointAmount = jagged ? 90 : (this.isPellet ? 5 : 16),
+                minPointAmount = jagged ? 90 : (this.isPellet ? 8 : 16),
                 x = this.x,
                 y = this.y,
                 maxSizeRemove = this.size * .16,
@@ -1664,10 +1663,10 @@
             lineWidth = settings.showTextOutline ? settings.qualityRef.getTextLineWidth(size) : 0;
 
         // Why set font twice???
-        ctx.font = size + 'px Noto Sans';
+        ctx.font = size + 'px Ubuntu';
         canvas.width = ctx.measureText(value).width;
         canvas.height = size * 1.2;
-        ctx.font = size + 'px Noto Sans';
+        ctx.font = size + 'px Ubuntu';
         ctx.fillStyle = lineWidth === 0 && !settings.showColor ? "#000000" : "#FFFFFF";
         ctx.lineWidth = lineWidth;
         ctx.strokeStyle = "#000000";
@@ -1703,10 +1702,10 @@
         for ( ; i < 10; i++) {
             canvas = canvasList[i].c;
             ctx = canvasList[i].t;
-            ctx.font = size + 'px Noto Sans';
+            ctx.font = size + 'px Ubuntu';
             canvasList[i].w = (canvas.width = ctx.measureText(i).width + lineWidth * 3) - lineWidth * 3;
             canvas.height = height;
-            ctx.font = size + 'px Noto Sans';
+            ctx.font = size + 'px Ubuntu';
             ctx.fillStyle = lineWidth === 0 && !settings.showColor ? "#000000" : "#FFFFFF";
             ctx.lineWidth = lineWidth;
             ctx.strokeStyle = "#000000";
