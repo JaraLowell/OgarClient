@@ -25,7 +25,7 @@
         });
     });
     var CONNECT_TO
-      , SKIN_URL = "http://ogar.mivabe.nl/skins/"
+      , SKIN_URL = "./skins/"
       , USE_HTTPS = "https:" == wHandle.location.protocol
       , BORDER_DEFAULT = {top: -2E3, left: -2E3, right: 2E3, bottom: 2E3}
       , PI_2 = Math.PI * 2
@@ -1015,16 +1015,16 @@
             ctx.measureText((b = serverStats.playersAlive + " playing")).width,
             ctx.measureText((c = serverStats.playersSpect + " spectating")).width
         );
-        serverStatCanvas.height = 85;
+        serverStatCanvas.height = 196;
 
         ctx.font = '14px Ubuntu';
         ctx.fillStyle = settings.darkTheme ? "#AAAAAA" : "#000000";
         ctx.globalAlpha = 1;
-        ctx.fillText(serverStats.name, 2, 16);
-        ctx.fillText(serverStats.mode, 2, 32);
-        ctx.fillText(a, 2, 48);
-        ctx.fillText(b, 2, 64);
-        ctx.fillText(c, 2, 80);
+        ctx.fillText(serverStats.name, 2, 40);
+        ctx.fillText(serverStats.mode, 2, 56);
+        ctx.fillText(a, 2, 72);
+        ctx.fillText(b, 2, 88);
+        ctx.fillText(c, 2, 104);
     };
     function drawLeaderboard() {
         if (leaderboardType === -1) return;
@@ -1048,7 +1048,7 @@
         ctx.fillRect(0, 0, 200, width);
 
         ctx.globalAlpha = 1;
-        ctx.fillStyle = "#FFFFFF";
+        ctx.fillStyle = "#428BCA";
         ctx.font = "30px Ubuntu";
         ctx.fillText("Leaderboard", 100 - ctx.measureText("Leaderboard").width / 2, 40);
 
@@ -1239,7 +1239,7 @@
             mainCtx.fillText("Score: " + userScore, 2, 32 * viewMult);
             mainCtx.font = ~~topSize + "px Ubuntu";
             mainCtx.fillText(topText, 2, 58 * viewMult);
-            mainCtx.fillText(PosText, 2, 178 * viewMult);
+            mainCtx.fillText(PosText, 2, 84 * viewMult);
             settings.qualityRef.drawStat && serverStatCanvas && mainCtx.drawImage(serverStatCanvas, 2, 60 * viewMult);
         } else {
             mainCtx.font = ~~topSize + "px Ubuntu";
