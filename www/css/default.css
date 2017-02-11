@@ -5,6 +5,8 @@ body {
     overflow: hidden;
     font-family: Ubuntu;
     background-color: #000000;
+    /* background: url("/img/background_tile_2.jpg"); */
+    background-size: cover;
 }
 hr {
     height: 1px;
@@ -12,15 +14,19 @@ hr {
     background-color: rgba(36, 51, 66, 0.9);
     border: none;
 }
+b, strong {
+    font-weight: 700;
+    color: rgba(36, 51, 66, 0.9);
+}
 /* IDs */
 #overlays {
-    display:none; 
-    position: absolute; 
-    left: 0; 
-    right: 0; 
-    top: 0; 
-    bottom: 0; 
-    background-color: rgba(0,0,0,0.5);
+    display:none;
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 0;
+    bottom: 0;
+    background-color: rgba(16, 20, 33, 0.88);
     z-index: 200;
 }
 #title {
@@ -153,10 +159,11 @@ hr {
     top: 24px;
     right: 24px
 }
-#helloDialog, #scorebox {
-    width: 400px;
+#helloDialog, #scorebox, #news, #about {
+    width: 360px;
+    height: 600px;
     background: rgba(9, 13, 23, 0.91) url('../img/bg_sidebar.gif') repeat scroll left top;
-    margin: 10px auto;
+    /* margin: 10px auto; */
     padding: 5px 15px 5px 15px;
     position: absolute;
     top: 50%;
@@ -165,7 +172,9 @@ hr {
     -webkit-transform: translate(-50%, -50%);
     -ms-transform: translate(-50%, -50%);
     transform: translate(-50%, -50%);
-    border-radius: 5px;
+    line-height: 1;
+    border-radius: 7px;
+    border: 1px solid rgba(36, 51, 66, 0.9);
 }
 #chat_textbox {
     -webkit-transition: all .5s ease-in-out;
@@ -226,6 +235,11 @@ hr {
 .center {
     display: table;
     margin: 0 auto;
+}
+.footer {
+    width: 100%;
+    font-size: 10px;
+    text-align: center;
 }
 @keyframes spin {
     0% { transform: rotate(0deg); }

@@ -27,7 +27,7 @@
     });
     var CONNECT_TO
       , SKIN_URL = "./skins/"
-      , VERSION = "v7.0211"
+      , VERSION = "v7.0212"
       , USE_HTTPS = "https:" == wHandle.location.protocol
       , BORDER_DEFAULT = {top: -2E3, left: -2E3, right: 2E3, bottom: 2E3}
       , PI_2 = Math.PI * 2
@@ -907,6 +907,12 @@
             var cW = mainCanvas.width = wHandle.innerWidth,
                 cH = mainCanvas.height = wHandle.innerHeight;
             _viewMult = Math.min(cH / 1080, cW / 1920);
+
+            var hello = wjQuery("#helloDialog");
+            var adver = wjQuery("#scorebox");
+            var modalHeight = hello.height();
+            modalHeight > cH / 1.1 ? hello.css("transform", "translate(-50%, -50%) scale(" + cH / modalHeight / 1.1 + ")") : hello.css("transform", "translate(-50%, -50%)");
+            modalHeight > cH / 1.1 ? adver.css("transform", "translate(-50%, -50%) scale(" + cH / modalHeight / 1.1 + ")") : adver.css("transform", "translate(-50%, -50%)");
         };
 
         wHandle.onresize();

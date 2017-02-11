@@ -1,3 +1,12 @@
+<?php
+header('Last-Modified: '. gmdate("D, d M Y H:i:s").' GMT');
+header('Cache-Control: no-store, no-cache, must-revalidate');
+header('Cache-Control: post-check=0, pre-check=0', false);
+header('Pragma: no-cache');
+header('Content-Type: text/html;charset=utf-8');
+date_default_timezone_set('America/Los_Angeles');
+error_reporting(0);
+?>
 <!DOCTYPE html>
 <html>
 <head>
@@ -50,7 +59,7 @@
     <div id="overlays">
         <div id="helloDialog">
             <form role="form">
-                <div class="form-group">
+                <div class="form-group" style="text-align: center;">
                     <h2 id="title">OgarServ 1.7 Client</h2>
                 </div>
 
@@ -59,7 +68,15 @@
                     <input id="myskin" class="form-control save" data-box-id="50" type="hidden" />
                     <select id="gamemode" class="form-control" onchange="setserver($(this).val());" required>
                         <option selected disabled>Gamemode:</option>
-                        <option value="ogar.mivabe.nl:44411">Jara's Server</option>
+<?php
+$serverip = $_GET['ip'];
+if( $serverip != '' )
+{
+    echo '                        <option value="'.$serverip.'">'.substr($serverip,0,strpos($serverip,":")).'</option>
+';
+}
+?>
+                        <option value="ogar.mivabe.nl:44411">Test Server</option>
                     </select>
                     <br clear="both" />
                 </div>
@@ -118,7 +135,36 @@
                     </span>
                 </center>
             </div>
-            <hr />
+            <hr/>
+            <span id="jversion" class="footer"></span>
+
+            <!-- // Gameplay Window // -->
+            <div id="about" class="form-group" style="position:absolute; top: 50%;left:550px;width:350px;">
+                <div class="form-group">
+                    <div class="form-group" style="text-align: center;"><h2 id="title">Gameplay</h2></div>
+                    <div class="form-group">
+                        <span class="text-muted"><font size="-1">The objective of the game is to grow a cell, a circular player-controlled object, by swallowing both pellets and smaller cells without being swallowed by bigger cells. It can be played in a deathmatch or between teams. There is no set goal; players restart when all of their cells are swallowed.<br><br>The game contains three entities: pellets, cells and viruses:<br><br><b>Pellets</b>, or food, are randomly scattered among the map. When swallowed, they slightly increase a cells mass.<br><br><b>Cells</b> are controlled by every player. Only opponent cells that are smaller can be swallowed; they can be swallowed directly, or by splitting, as described below. Cells move slower with heavier mass and gradually lose mass over time.<br><br><b>Viruses</b> split larger cells into many pieces. Smaller cells can hide behind them for protection against larger cells. They can be fed to create another virus launched at a direction the player chooses.<br><br>Players can split a part of their cell, flinging one of the divided cells at the direction of the cursor. This can be used as a ranged attack to swallow other cells, to escape from a difficult situation, or to move more quickly around the map. Split cells eventually merge into one. Players can also release a small fraction of their mass to grow other cells or to feed viruses, which splits them when done several times.</font></span>
+                    </div>
+                </div>
+                <br clear="all">
+            </div>
+
+            <!-- // News Window // -->
+            <div id="news" class="form-group" style="position:absolute; top:50%;left:-192px;width:350px;">
+                <div class="form-group">
+                    <div class="form-group" style="text-align: center;"><h2 id="title">News</h2></div>
+                    <div class="form-group">
+                        <span class="text-muted"><font size="-1">Master Server is Live!, visit it here at <a href="http://ogar.mivabe.nl/master" target="_blank">Ogar Tracker</a><br>
+                        <br><hr>
+                        This client needs OgarServ version 1.7 or higher, you can get the server on <a href="https://github.com/JaraLowell/OgarServ" target="_blank">GitHub</a>
+                        <br><hr>
+                        We now have version 7.0211 live, we updated some things in this, when now sellecting a lower quality the skin images will also will degrade, or more we disable image smoothing this is by default on but now with slider it can be turned off for more FPS.
+                        </font></span>
+                    </div>
+                </div>
+                <br clear="all">
+            </div>
+
         </div>
     </div>
 
@@ -129,6 +175,7 @@
         </div>
     </div>
 
+    <!-- // Advertizment Area when you die // -->
     <div id="advert">
         <div id="scorebox" style="height:380px">
             <div id="stats" style="width: 100%; height: 230px; padding: 0px 0px 300px; overflow: hidden;" class="agario-panel">
