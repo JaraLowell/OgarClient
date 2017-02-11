@@ -11,7 +11,7 @@
     $(document).ready(function() {
         $('body').append('<canvas id="nodes"></canvas>');
         $('#nodes').css({
-            'background': 'rgba(0,0,0,.5) url("img/map-bg.png")',
+            'background': 'rgba(0,0,0,.7) url("img/map-bg.png")',
             'border-radius': '7px',
             'border': '1px solid rgba(0,0,0,0.2)',
             'padding': '0',
@@ -23,14 +23,16 @@
             'bottom': '15px',
             'display': 'none'
         });
+        $('#jversion').text( VERSION );
     });
     var CONNECT_TO
       , SKIN_URL = "./skins/"
+      , VERSION = "v7.0211"
       , USE_HTTPS = "https:" == wHandle.location.protocol
       , BORDER_DEFAULT = {top: -2E3, left: -2E3, right: 2E3, bottom: 2E3}
       , PI_2 = Math.PI * 2
       , SEND_104 = new Uint8Array([104, 1, 0, 0, 0])
-      , SEND_254 = new Uint8Array([254, 6, 0, 0, 0])
+      , SEND_254 = new Uint8Array([254, 7, 0, 0, 0])
       , SEND_255 = new Uint8Array([255, 1, 0, 0, 0])
       , FPS_MAXIMUM = 1000
       , ws = null
@@ -73,6 +75,7 @@
         qTree = null;
         leaderboard = [];
         leaderboardType = "none";
+        useutf8 = null;
         userScore = 0;
         centerX = 0;
         centerY = 0;
@@ -113,7 +116,6 @@
         WsSend(SEND_255);
         serverVersion = "Unknown";
         log.debug("Connected to " + CONNECT_TO);
-        log.debug("HTTPS: " + USE_HTTPS);
         chatMessages.push({
             server: false,
             admin: false,
@@ -221,13 +223,14 @@
                 break;
             case 0x31:
                 // FFA list
+                if(useutf8 == null) break;
                 leaderboard = [];
                 leaderboardType = 0x31;
                 count = reader.getUint32();
                 for (i = 0; i < count; ++i) {
                     leaderboard.push({
                         me: reader.getUint32(),
-                        name: reader.getStringUTF8() || "An unnamed cell"
+                        name: reader.getStringUCS() || "An unnamed cell"
                     });
                 }
                 drawLeaderboard();
@@ -271,6 +274,8 @@
                     updColor = !!(flags & 0x02);
                     updName = !!(flags & 0x08);
                     updSkin = !!(flags & 0x04);
+                    updProt = !!(flags & 0x40); // New, use Unicode rather then UTF8 for name reading
+                    if(useutf8 == null && updName) { useutf8 = updProt; log.debug("Use Unicode player names : " + updProt ); }
                     var color = null,
                         name = null,
                         skin = null,
@@ -284,8 +289,10 @@
                     }
 
                     if (updSkin) skin = reader.getStringUTF8();
-                    if (updName) name = reader.getStringUTF8();
-                    if (name != null && skin == null) skin = '%default';
+                    if (updName) {
+                        if(updProt) name = reader.getStringUCS(); else name = reader.getStringUTF8();
+                        if(skin == null) skin = '%default';
+                    }
                     if (nodesID.hasOwnProperty(id)) {
                         node = nodesID[id];
                         node.nx = x;
@@ -599,6 +606,7 @@
         isWindowFocused = true,
         mainCanvas = null,
         mainCtx = null,
+        useutf8 = null,
         chatBox = null,
         lastDrawTime = Date.now(),
         escOverlay = false,
@@ -631,7 +639,8 @@
             overrideGrid: false,
             overrideSkins: false,
             drawStat: true,
-            drawMassSpectate: true
+            drawMassSpectate: true,
+            smoothquality: 'high'
         },
         'high': {
             getTextLineWidth: function(a) {
@@ -642,7 +651,8 @@
             overrideGrid: false,
             overrideSkins: false,
             drawStat: true,
-            drawMassSpectate: true
+            drawMassSpectate: true,
+            smoothquality: 'high'
         },
         'medium': {
             getTextLineWidth: function(a) {
@@ -653,7 +663,8 @@
             overrideGrid: false,
             overrideSkins: false,
             drawStat: true,
-            drawMassSpectate: true
+            drawMassSpectate: true,
+            smoothquality: 'medium'
         },
         'low': {
             getTextLineWidth: function(a) {
@@ -664,7 +675,8 @@
             overrideGrid: true,
             overrideSkins: false,
             drawStat: false,
-            drawMassSpectate: false
+            drawMassSpectate: false,
+            smoothquality: 'low'
         },
         'mobile': {
             getTextLineWidth: function(a) {
@@ -675,7 +687,8 @@
             overrideGrid: true,
             overrideSkins: true,
             drawStat: false,
-            drawMassSpectate: false
+            drawMassSpectate: false,
+            smoothquality: 'low'
         },
     };
 
@@ -711,7 +724,6 @@
                 } else if ((id == 0 || id == 50) && value != null) {
                     $(this).val(value);
                 }
-                log.debug("Setting " + id + " set to " + value);
             });
             wjQuery(".save").change(function() {
                 var id = $(this).data('box-id');
@@ -894,7 +906,7 @@
             window.scrollTo(0,0);
             var cW = mainCanvas.width = wHandle.innerWidth,
                 cH = mainCanvas.height = wHandle.innerHeight;
-            _viewMult = Math.max(cH / 1080, cW / 1920);
+            _viewMult = Math.min(cH / 1080, cW / 1920);
         };
 
         wHandle.onresize();
@@ -1186,6 +1198,15 @@
         // Grid
         if (settings.showGrid && !settings.qualityRef.overrideGrid) drawGrid();
 
+        // Update size & position & view update
+        l = nodesCopy.length;
+        for (i = 0; i < l; i++) {
+            n = nodesCopy[i];
+            dt = Math.max(Math.min((dr - n.appStamp) / 120, 1), 0);
+            n.updateAppearance(dr, dt);
+        }
+        viewUpdate();
+
         // Scale & translate for cell drawing
         mainCtx.translate((tx = cW2 - centerX * drawZoom), (ty = cH2 - centerY * drawZoom));
         mainCtx.scale(drawZoom, drawZoom);
@@ -1262,9 +1283,7 @@
         }
 
         drawing = false;
-
         garbageCollection();
-        viewUpdate();
     };
     function viewUpdate() {
         // Zoom, position & score update
@@ -1494,7 +1513,6 @@
         },
         draw: function(time) {
             var dt = Math.min(Math.max((time - this.appStamp) / 120, 0), 1);
-            this.updateAppearance(time, dt);
             this.appStamp = time;
 
             mainCtx.save();
@@ -1506,8 +1524,11 @@
             else
                 this.drawShape(dt);
 
+            mainCtx.restore();
+
             // Text drawing
             if (this.notPellet && !this.isVirus) {
+                mainCtx.save();
                 var nameDraw = settings.showNames && this.name !== "" && !this.isVirus;
                 if (nameDraw) drawText(this.x, this.y, this.name, this._nameSize, false);
 
@@ -1520,8 +1541,8 @@
                     else
                         drawText(this.x, this.y, text, this._nameSize * .5, true);
                 }
+                mainCtx.restore();
             }
-            mainCtx.restore();
         },
         drawVirus: function(x,y,s,r,k) {
             // Pretty wirly thingy for surprice cells :3 (only if quility is high or higher)
@@ -1561,7 +1582,7 @@
                 jagged = this.isVirus,
                 fill = mainCtx.createRadialGradient(this.x,this.y,0,this.x,this.y,this.size);
 
-            settings.darkTheme ? mainCtx.globalCompositeOperation = "lighter" : mainCtx.globalCompositeOperation = "luminosity";
+            settings.darkTheme ? mainCtx.globalCompositeOperation = "lighter" : mainCtx.globalCompositeOperation = "darker";
 
             mainCtx.lineWidth = settings.qualityRef.cellOutline ? (this.isEjected ? 0 : this.size > 20 ? Math.max(this.size * .05, 10) : 0) : 0;
             mainCtx.lineCap = "round";
@@ -1706,17 +1727,23 @@
             ctx = canvas.getContext('2d'),
             lineWidth = settings.showTextOutline ? settings.qualityRef.getTextLineWidth(size) : 0;
 
-        // Why set font twice???
         ctx.font = size + 'px Ubuntu';
-        canvas.width = ctx.measureText(value).width;
-        canvas.height = size * 1.2;
+        canvas.width = (lineWidth * 2) + ctx.measureText(value).width;
+        canvas.height = size * 1.3;
         ctx.font = size + 'px Ubuntu';
-        ctx.fillStyle = lineWidth === 0 && !settings.showColor ? "#000000" : "#FFFFFF";
-        ctx.lineWidth = lineWidth;
-        ctx.strokeStyle = "#000000";
+        ctx.fillStyle = "#FFFFFF";
 
-        (lineWidth > 0) && ctx.strokeText(value, 0, size);
-        ctx.fillText(value, 0, size);
+        if(settings.showTextOutline && lineWidth > 0) {
+            if(lineWidth > 3) {
+                ctx.shadowColor = "#000000";
+                ctx.shadowBlur = lineWidth;
+            }
+            ctx.lineWidth = lineWidth / 2;
+            ctx.strokeStyle = "#000000";
+            ctx.strokeText(value, lineWidth, size);
+        }
+
+        ctx.fillText(value, lineWidth, size);
 
         (!textCache[value]) && (textCache[value] = { });
         textCache[value][size] = {
