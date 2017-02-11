@@ -1498,6 +1498,8 @@
             this.appStamp = time;
 
             mainCtx.save();
+            mainCtx.imageSmoothingEnabled=settings.qualityRef.smoothRender > 0.6 ? 0 : 1;
+            mainCtx.imageSmoothingQuality = settings.qualityRef.smoothquality;
 
             if(this.isAgitated && settings.qualityRef.smoothRender < 0.5)
                 this.drawVirus(this.x,this.y,0.75,( time / 640 ),0);
