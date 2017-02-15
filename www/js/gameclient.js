@@ -27,7 +27,7 @@
     });
     var CONNECT_TO
       , SKIN_URL = "./skins/"
-      , VERSION = "v7.0212"
+      , VERSION = "v7.0215"
       , USE_HTTPS = "https:" == wHandle.location.protocol
       , BORDER_DEFAULT = {top: -2E3, left: -2E3, right: 2E3, bottom: 2E3}
       , PI_2 = Math.PI * 2
@@ -154,7 +154,7 @@
                 nameColor = '#' + nameColor;
                 name = reader.getStringUCS();
                 message = reader.getStringUCS();
-                chatAlphaWait += Math.max(5000, 1000 + message.length * 100);
+                chatAlphaWait += Math.max(10000, 1000 + message.length * 100);
                 chatMessages.push({
                     server: !!(flags & 0x80),
                     admin: !!(flags & 0x40),
@@ -482,12 +482,13 @@
     };
     function OnCellEaten(predator, prey) {
         if (-1 != myNodes.indexOf(predator)) {
-            // var eatsize = nodesID[prey].size;
-            if(nodesID[prey].isPellet) 
+            var thisnode = nodesID[prey];
+
+            if(thisnode.isPellet)
                 stats.pellet++;
-            else if(nodesID[prey].isVirus)
+            else if(thisnode.isVirus)
                 stats.virus++;
-            else if(nodesID[prey].name == 0)
+            else if(thisnode.name == 0)
                 stats.cells++;
             else
                 stats.players++;
@@ -571,6 +572,7 @@
         nodes = [],
         deadNodes = [],
         myNodes = [],
+        cachedFoodPos = [],
         qTree = null,
         leaderboard = [],
         leaderboardType = -1, // -1 - Not set, 48 - Text list, 49 - FFA list, 50 - Pie chart
@@ -625,6 +627,10 @@
         stats = {virus: 0, pellet: 0, cells: 0, players: 0, score: 0},
         pressed = {space: false, w: false, e: false, r: false, t: false, p: false, q: false, esc: false};
 
+    for(var o=0; o<720; o+=2) {
+        cachedFoodPos[o] = Math.cos((o*Math.PI)/180)*10;
+        cachedFoodPos[o+1] = Math.sin((o*Math.PI)/180)*10;
+    }
     splitIcon.src = "img/split.png";
     ejectIcon.src = "img/feed.png";
 
@@ -982,15 +988,16 @@
         }
 
         while ((l = chatMessages.length) > 15) chatMessages.shift(); // Remove older messages
+        l = chatMessages.length;
 
         for ( ; i < l; i++) {
             msg = chatMessages[i];
-            ctx.font = '18px Ubuntu';
-            aW = Math.max(aW, 20 + ctx.measureText(msg.name + ":").width + ctx.measureText(" " + msg.message).width);
+            ctx.font = '14px Ubuntu';
+            aW = Math.max(aW, 16 + ctx.measureText(msg.name + ":").width + ctx.measureText(" " + msg.message).width);
         }
 
         chatCanvas.width = aW;
-        chatCanvas.height = l * 20 + 20;
+        chatCanvas.height = (l * 18) + 18;
         ctx.fillStyle = "rgba(0,0,0,0)";
         ctx.globalAlpha = alpha * .2;
         ctx.fillRect(0, 0, chatCanvas.width, chatCanvas.height);
@@ -1000,20 +1007,20 @@
             msg = chatMessages[i];
 
             var divider = ":";
-            if(msg.server) { msg.name = "\uD83D\uDCE2"; msg.nameColor = "#770000"; divider = " "; }
-            if(msg.admin) { msg.name = "\uD83D\uDD75"; msg.nameColor = "#7D7D7D"; divider = " "; }
+            if(msg.server) { msg.name = "\uD83D\uDCE2"; msg.nameColor = "#770000"; divider = ""; }
+            if(msg.admin) { msg.name = "\uD83D\uDD75"; msg.nameColor = "#7D7D7D"; divider = ""; }
 
             // Name
             ctx.fillStyle = msg.nameColor;
-            ctx.font = '18px Ubuntu';
+            ctx.font = '14px Ubuntu';
             fW = ctx.measureText(msg.name + divider).width;
-            ctx.font = '18px Ubuntu';
-            ctx.fillText(msg.name + divider, 10, 5 + 20 * (i + 1));
+            ctx.font = '14px Ubuntu';
+            ctx.fillText(msg.name + divider, 10, 5 + 18 * (i + 1));
 
             // Message
-            ctx.font = '18px Ubuntu';
+            ctx.font = '14px Ubuntu';
             if(!msg.server) ctx.fillStyle = "#FFFFFF";
-            ctx.fillText(" " + msg.message, 10 + fW, 5 + 20 * (i + 1));
+            ctx.fillText(" " + msg.message, 10 + fW, 5 + 18 * (i + 1));
         }
     };
     function drawServerStat() {
@@ -1025,7 +1032,7 @@
         if (!serverStatCanvas) serverStatCanvas = document.createElement('canvas');
         var ctx = serverStatCanvas.getContext('2d'), a, b, c;
 
-        ctx.font = '14px Ubuntu';
+        ctx.font = '16px Ubuntu';
         serverStatCanvas.width = 4 + Math.max(
             ctx.measureText(serverStats.name).width,
             ctx.measureText(serverStats.mode).width,
@@ -1035,14 +1042,15 @@
         );
         serverStatCanvas.height = 196;
 
-        ctx.font = '14px Ubuntu';
+        ctx.font = '16px Ubuntu';
         ctx.fillStyle = settings.darkTheme ? "#AAAAAA" : "#000000";
         ctx.globalAlpha = 1;
-        ctx.fillText(serverStats.name, 2, 40);
-        ctx.fillText(serverStats.mode, 2, 56);
-        ctx.fillText(a, 2, 72);
-        ctx.fillText(b, 2, 88);
-        ctx.fillText(c, 2, 104);
+        var ix = 30;
+        ctx.fillText(serverStats.name, 2, ix += 17);
+        ctx.fillText(serverStats.mode, 2, ix += 17);
+        ctx.fillText(a, 2, ix += 17);
+        ctx.fillText(b, 2, ix += 17);
+        ctx.fillText(c, 2, ix += 17);
     };
     function drawLeaderboard() {
         if (leaderboardType === -1) return;
@@ -1253,34 +1261,33 @@
 
         // Score & FPS drawing
         var topText = ~~fps + " FPS",
-            topSize = 20 * viewMult,
+            topSize = 40 * viewMult,
             PosText = "";
         if (latency !== -1) topText += ", " + latency + "ms ping";
         if (myposx != null) PosText += "X:" + myposx + " / Y:" + myposy;
 
         mainCtx.fillStyle = settings.darkTheme ? "#FFFFFF" : "#000000";
-
         if (userScore > 0) {
-            var scoreSize = 32 * viewMult;
+            var scoreSize = 48 * viewMult;
             mainCtx.font = ~~scoreSize + "px Ubuntu";
-            mainCtx.fillText("Score: " + userScore, 2, 32 * viewMult);
-            mainCtx.font = ~~topSize + "px Ubuntu";
-            mainCtx.fillText(topText, 2, 58 * viewMult);
-            mainCtx.fillText(PosText, 2, 84 * viewMult);
+            mainCtx.fillText("Score: " + userScore, 4, 36 * viewMult);
+            mainCtx.font = ~~topSize/2 + "px Ubuntu";
+            mainCtx.fillText(topText, 4, 58 * viewMult);
+            mainCtx.fillText(PosText, 4, 84 * viewMult);
             settings.qualityRef.drawStat && serverStatCanvas && mainCtx.drawImage(serverStatCanvas, 2, 60 * viewMult);
         } else {
             mainCtx.font = ~~topSize + "px Ubuntu";
-            mainCtx.fillText(topText, 2, 22 * viewMult);
+            mainCtx.fillText(topText, 4, 36 * viewMult);
             settings.qualityRef.drawStat && serverStatCanvas && mainCtx.drawImage(serverStatCanvas, 2, 24 * viewMult);
         }
         leaderboardCanvas && mainCtx.drawImage(leaderboardCanvas, cW / viewMult - leaderboardCanvas.width - 10, 10);
 
-        // Chat alpha update
-        if (chatMessages.length > 0) if (getChatAlpha() !== 1) drawChat();
-        chatCanvas && mainCtx.drawImage(chatCanvas, 10, (cH - 50) / viewMult - chatCanvas.height);
-
         // Scale back to normal
         mainCtx.scale(viewMult = 1 / viewMult, viewMult);
+
+        // Chat alpha update
+        if (chatMessages.length > 0) if (getChatAlpha() !== 1) drawChat();
+        chatCanvas && mainCtx.drawImage(chatCanvas, 2, (cH - 40) - chatCanvas.height);
 
         // Draw touches
         if(settings.mobile) {
@@ -1603,7 +1610,7 @@
             mainCtx.fillStyle = settings.showColor ? fill : "#FFFFFF";
             mainCtx.strokeStyle = settings.showColor ? this.strokeColor : "#E5E5E5";
 
-            if (complex || jagged || this.isAgitated) {
+            if (!this.isPellet && (complex || jagged || this.isAgitated)) {
                 mainCtx.beginPath();
                 this.updatePoints(complex, jagged, dt);
                 var points = this.rigidPoints;
@@ -1632,7 +1639,18 @@
                 this.rigidPoints = [];
                 if (this._meCache)
                     // Cached drawing exists - use it
-                    mainCtx.drawImage(this._meCache, this.x - this.size, this.y - this.size, this.size * 2, this.size * 2);
+                    if(this.isPellet && settings.qualityRef.smoothRender < 1.0) {
+                        if (typeof(this.loop)=='undefined') {
+                            // Lets wirl the food a little in an circle motion
+                            this.sp = Math.random() > 0.5 ? 1 : 2;
+                            this.ratio = (1 + Math.random()) * (Math.random() * 2 > 1 ? 1 :-1);
+                            this.loop=Math.floor(Math.random() * 360);
+                        }
+                        mainCtx.shadowBlur = 5;
+                        mainCtx.shadowColor = this.color;
+                        this.loop = (this.loop + this.sp) % 360;
+                        mainCtx.drawImage(this._meCache, this.x - (this.size * 3) + (cachedFoodPos[this.loop * 2] * this.ratio), this.y - (this.size * 3) + (cachedFoodPos[(this.loop * 2) + 1] * (Math.abs(this.ratio))));
+                    } else mainCtx.drawImage(this._meCache, this.x - this.size, this.y - this.size, this.size * 2, this.size * 2);
                 else {
                     mainCtx.beginPath();
                     mainCtx.arc(this.x, this.y, Math.abs(this.size - mainCtx.lineWidth * 0.5) + 0.5, 0, PI_2, false);
