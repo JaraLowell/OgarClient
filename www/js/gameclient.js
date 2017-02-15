@@ -27,7 +27,7 @@
     });
     var CONNECT_TO
       , SKIN_URL = "./skins/"
-      , VERSION = "v7.0215"
+      , VERSION = "v7.0216"
       , USE_HTTPS = "https:" == wHandle.location.protocol
       , BORDER_DEFAULT = {top: -2E3, left: -2E3, right: 2E3, bottom: 2E3}
       , PI_2 = Math.PI * 2
@@ -256,7 +256,7 @@
                     killer = reader.getUint32();
                     killed = reader.getUint32();
                     if (!nodesID.hasOwnProperty(killer) || !nodesID.hasOwnProperty(killed)) continue;
-                    OnCellEaten(nodesID[killer], nodesID[killed]);
+                    OnCellEaten(killer, killed);
                     nodesID[killed].killer = nodesID[killer];
                     nodesID[killed].destroy();
                 }
@@ -333,15 +333,17 @@
                         var _nCache = document.createElement('canvas');
                         var pCtx = _nCache.getContext('2d'),
                             lW = this.nSize > 20 ? Math.max(this.nSize * .01, 10) : 0, sz;
-                        _nCache.width = (sz = node.nSize + lW) * 2;
+                        _nCache.width = (sz = 2 + node.nSize + lW) * 2;
                         _nCache.height = sz * 2;
                         pCtx.lineWidth = lW;
                         pCtx.lineCap = pCtx.lineJoin = "round";
-                        pCtx.fillStyle = node.color;
+                        var fill = mainCtx.createRadialGradient(sz,sz,0,sz,sz, node.nSize - lW);
+                        settings.darkTheme ? fill.addColorStop(0, 'rgba(0,0,0,0.6)') : fill.addColorStop(0, 'rgba(255,255,255,0.6)');
+                        fill.addColorStop(1, node.color);
+                        pCtx.fillStyle = fill;
                         pCtx.strokeStyle = node.strokeColor;
-
                         pCtx.beginPath();
-                        pCtx.arc(sz, sz, node.nSize - lW, 0, 2 * Math.PI, false);
+                        pCtx.arc(sz, sz, node.nSize - lW, 0, PI_2, false);
                         pCtx.fill();
                         pCtx.stroke();
                         pCtx.closePath();
@@ -482,25 +484,28 @@
     };
     function OnCellEaten(predator, prey) {
         var eats = false;
+        nodeprey = nodesID[prey];
+        nodepred = nodesID[predator];
+
         if (-1 != myNodes.indexOf(predator)) {
-            if(prey.isPellet)
+            if(nodeprey.isPellet)
                 stats.pellet++;
-            else if(prey.isVirus)
+            else if(nodeprey.isVirus)
                 stats.virus++;
-            else if(prey.name == 0)
+            else if(nodeprey.name == 0)
                 stats.cells++;
             else {
                 // You eat a player!
                 stats.players++;
                 eats = true;
             }
-        } else if(prey.name != 0 && predator.name != 0) {
+        } else if(nodeprey.name != 0 && nodepred.name != 0) {
             // predator.name eats prey.name!
             eats = true;
         }
 
         if(eats && settings.showkills) {
-            battlelog.push( { "data": "<strong style='color:" + predator.color + "'>" + htmlspecialchars(predator.name) + "</strong> eats <strong style='color:" + prey.color + "'>" + htmlspecialchars(prey.name) + "</strong> (" + Math.floor((prey.size * prey.size)/100) + " mass)" } );
+            battlelog.push( { "data": "<strong style='color:" + nodepred.color + "'>" + htmlspecialchars(nodepred.name) + "</strong> eats <strong style='color:" + nodeprey.color + "'>" + htmlspecialchars(nodeprey.name) + "</strong> (" + Math.floor((nodeprey.size * nodeprey.size)/100) + " mass)" } );
             if(battlelog.length > 12) battlelog.shift();
             var temp = '', i, k = battlelog.length;
             if (k > 0 ) {
@@ -1626,7 +1631,7 @@
             mainCtx.lineCap = "round";
             mainCtx.lineJoin = jagged ? "miter" : "round";
 
-            fill.addColorStop(0, '#000000');
+            fill.addColorStop(0, 'rgba(0,0,0,0.6)');
             if(settings.RenderAlpha) {
                 fill.addColorStop(0, 'rgba(0,0,0,0.4)');
                 if(this.isPellet)
@@ -1674,11 +1679,11 @@
                             this.ratio = (1 + Math.random()) * (Math.random() * 2 > 1 ? 1 : -1);
                             this.loop=Math.floor(Math.random() * 360);
                         }
+                        this.loop = (this.loop + this.sp) % 360;
                         if(settings.qualityRef.smoothRender < 0.4) {
                             mainCtx.shadowBlur = 5;
                             mainCtx.shadowColor = this.color;
                         }
-                        this.loop = (this.loop + this.sp) % 360;
                         mainCtx.drawImage(this._meCache, this.x - (this.size * 3) + (cachedFoodPos[this.loop * 2] * this.ratio), this.y - (this.size * 3) + (cachedFoodPos[(this.loop * 2) + 1] * (Math.abs(this.ratio))));
                     } else mainCtx.drawImage(this._meCache, this.x - this.size, this.y - this.size, this.size * 2, this.size * 2);
                 else {
