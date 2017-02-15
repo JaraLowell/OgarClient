@@ -31,7 +31,7 @@ error_reporting(0);
     <script src="js/writer.js"></script>
     <script src="js/vtr.js"></script>
     <script src="js/quad.js"></script>
-    <script src="js/gameclient.js?v70215"></script>
+    <script src="js/gameclient.js"></script>
     <script src="js/shw14.js"></script>
     <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.4/js/bootstrap.min.js"></script>
 </head>
