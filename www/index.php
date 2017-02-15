@@ -31,7 +31,7 @@ error_reporting(0);
     <script src="js/writer.js"></script>
     <script src="js/vtr.js"></script>
     <script src="js/quad.js"></script>
-    <script src="js/gameclient.js"></script>
+    <script src="js/gameclient.js?v70215"></script>
     <script src="js/shw14.js"></script>
     <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.4/js/bootstrap.min.js"></script>
 </head>
@@ -97,24 +97,28 @@ if( $serverip != '' )
                         </button>
                         <br clear="both" />
                     </div>
-                    <div style="margin: 6px;">
-                        <label style="width:106px">
+                    <div style="margin: 6px; width: 95%;">
+                        <label style="width:45%">
                             <input type="checkbox" class="save" data-box-id="1" onchange="setSkins(!$(this).is(':checked'));"> No skins</label>
-                        <label style="width:106px">
+                        <label style="width:45%">
                             <input type="checkbox" class="save" data-box-id="2" onchange="setNames(!$(this).is(':checked'));"> No names</label>
-                        <label style="width:106px">
+                        <label style="width:45%">
                             <input type="checkbox" class="save" data-box-id="3" onchange="setDarkTheme($(this).is(':checked'));" checked> Dark Theme</label>
-                        <label style="width:106px">
+                        <label style="width:45%">
                             <input type="checkbox" class="save" data-box-id="4" onchange="setColors($(this).is(':checked'));"> No colors</label>
-                        <label style="width:106px">
-                            <input type="checkbox" class="save" data-box-id="7" onchange="setChatHide($(this).is(':checked'));" checked> Show Chat</label>
-                        <label style="width:106px">
-                            <input type="checkbox" class="save" data-box-id="8" onchange="setSmooth($(this).is(':checked'));" checked> Smooth FPS</label>
-                        <label style="width:106px">
+                        <label style="width:45%">
+                            <input type="checkbox" class="save" data-box-id="5" onchange="setChatHide($(this).is(':checked'));" checked> Show Chat</label>
+                        <label style="width:45%">
+                            <input type="checkbox" class="save" data-box-id="6" onchange="setSmooth($(this).is(':checked'));" checked> Smooth FPS</label>
+                        <label style="width:45%">
                             <input type="checkbox" class="save" data-box-id="7" onchange="setBorder($(this).is(':checked'));" checked> Border</label>
-                        <label style="width:106px">
+                        <label style="width:45%">
                             <input type="checkbox" class="save" data-box-id="8" onchange="setMapGrid($(this).is(':checked'));" checked> Map Grid</label>
-                        <label style="width:318px">
+                        <label style="width:45%">
+                            <input type="checkbox" class="save" data-box-id="9" onchange="setKillsInfo($(this).is(':checked'));" checked> Kill Info</label>
+                        <label style="width:45%">
+                            <input type="checkbox" class="save" data-box-id="10" onchange="setDrawAlpha($(this).is(':checked'));" checked> Cells Alpha</label>
+                        <label style="width:95%">
                             <br>Draw quality <span id="range">high</span><input type="range" min="0" max="4" value="3" step="1" onchange="setQuality($(this).val())"></label>
                     </div>
                 </div>
@@ -143,7 +147,7 @@ if( $serverip != '' )
                 <div class="form-group">
                     <div class="form-group" style="text-align: center;"><h2 id="title">Gameplay</h2></div>
                     <div class="form-group">
-                        <span class="text-muted"><font size="-1">The objective of the game is to grow a cell, a circular player-controlled object, by swallowing both pellets and smaller cells without being swallowed by bigger cells. It can be played in a deathmatch or between teams. There is no set goal; players restart when all of their cells are swallowed.<br><br>The game contains three entities: pellets, cells and viruses:<br><br><b>Pellets</b>, or food, are randomly scattered among the map. When swallowed, they slightly increase a cells mass.<br><br><b>Cells</b> are controlled by every player. Only opponent cells that are smaller can be swallowed; they can be swallowed directly, or by splitting, as described below. Cells move slower with heavier mass and gradually lose mass over time.<br><br><b>Viruses</b> split larger cells into many pieces. Smaller cells can hide behind them for protection against larger cells. They can be fed to create another virus launched at a direction the player chooses.<br><br>Players can split a part of their cell, flinging one of the divided cells at the direction of the cursor. This can be used as a ranged attack to swallow other cells, to escape from a difficult situation, or to move more quickly around the map. Split cells eventually merge into one. Players can also release a small fraction of their mass to grow other cells or to feed viruses, which splits them when done several times.</font></span>
+                        <span class="text-muted"><font style="font-size:0.9em">The objective of the game is to grow a cell, a circular player-controlled object, by swallowing both pellets and smaller cells without being swallowed by bigger cells. It can be played in a deathmatch or between teams. There is no set goal; players restart when all of their cells are swallowed.<br><br>The game contains three entities: pellets, cells and viruses:<br><br><b>Pellets</b>, or food, are randomly scattered among the map. When swallowed, they slightly increase a cells mass.<br><br><b>Cells</b> are controlled by players. Only opponent cells that are smaller can be swallowed; they can be swallowed directly, or by splitting, as described below. Cells move slower with heavier mass and gradually lose mass over time.<br><br><b>Viruses</b> split larger cells into many pieces. Smaller cells can hide behind them for protection against larger cells. They can be fed to create another virus launched at a direction the player chooses.<br><br>Players can split a part of their cell, flinging one of the divided cells at the direction of the cursor. This can be used as a ranged attack to swallow other cells, to escape from a difficult situation, or to move more quickly around the map. Split cells eventually merge into one. Players can also release a small fraction of their mass to grow other cells or to feed viruses, which splits them when done several times.</font></span>
                     </div>
                 </div>
                 <br clear="all">
@@ -154,11 +158,11 @@ if( $serverip != '' )
                 <div class="form-group">
                     <div class="form-group" style="text-align: center;"><h2 id="title">News</h2></div>
                     <div class="form-group">
-                        <span class="text-muted"><font size="-1">Master Server is Live!, visit it here at <a href="http://ogar.mivabe.nl/master" target="_blank">Ogar Tracker</a><br>
+                        <span class="text-muted"><font style="font-size:0.9em">Master Server is Live!, visit it here at <a href="http://ogar.mivabe.nl/master" target="_blank">Ogar Tracker</a><br>
                         <br><hr>
                         This client needs OgarServ version 1.7 or higher, you can get the server on <a href="https://github.com/JaraLowell/OgarServ" target="_blank">GitHub</a>
                         <br><hr>
-                        We now have version 7.0211 live, we updated some things in this, when now sellecting a lower quality the skin images will also will degrade, or more we disable image smoothing this is by default on but now with slider it can be turned off for more FPS.
+                        We now have version 7.0215 live, we updated some things in this, when now sellecting a lower quality the skin images will also will degrade, or more we disable image smoothing this is by default on but now with slider it can be turned off for more FPS.
                         </font></span>
                     </div>
                 </div>
@@ -194,6 +198,7 @@ if( $serverip != '' )
     </div>
 
     <canvas id="canvas" width="800" height="600"></canvas>
+    <div id="livekills"></div>
     <input type="text" id="chat_textbox" placeholder="Press enter to chat!" maxlength="200" />
 <script>
 //Hold a down and it will keep firing untill you take your finger off!

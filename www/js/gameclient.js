@@ -256,7 +256,7 @@
                     killer = reader.getUint32();
                     killed = reader.getUint32();
                     if (!nodesID.hasOwnProperty(killer) || !nodesID.hasOwnProperty(killed)) continue;
-                    OnCellEaten(killer, killed);
+                    OnCellEaten(nodesID[killer], nodesID[killed]);
                     nodesID[killed].killer = nodesID[killer];
                     nodesID[killed].destroy();
                 }
@@ -481,19 +481,44 @@
         }
     };
     function OnCellEaten(predator, prey) {
+        var eats = false;
         if (-1 != myNodes.indexOf(predator)) {
-            var thisnode = nodesID[prey];
-
-            if(thisnode.isPellet)
+            if(prey.isPellet)
                 stats.pellet++;
-            else if(thisnode.isVirus)
+            else if(prey.isVirus)
                 stats.virus++;
-            else if(thisnode.name == 0)
+            else if(prey.name == 0)
                 stats.cells++;
-            else
+            else {
+                // You eat a player!
                 stats.players++;
+                eats = true;
+            }
+        } else if(prey.name != 0 && predator.name != 0) {
+            // predator.name eats prey.name!
+            eats = true;
         }
-    }
+
+        if(eats && settings.showkills) {
+            battlelog.push( { "data": "<strong style='color:" + predator.color + "'>" + htmlspecialchars(predator.name) + "</strong> eats <strong style='color:" + prey.color + "'>" + htmlspecialchars(prey.name) + "</strong> (" + Math.floor((prey.size * prey.size)/100) + " mass)" } );
+            if(battlelog.length > 12) battlelog.shift();
+            var temp = '', i, k = battlelog.length;
+            if (k > 0 ) {
+                var livekills = document.getElementById("livekills");
+                for (i = 0; i < k; ++i) {
+                    if(typeof(battlelog[i].data) != 'undefined') temp += battlelog[i].data + "<br>";
+                }
+                $(livekills).html( temp );
+            }
+        }
+    };
+    function htmlspecialchars(html) {
+      html = html.replace("/&/g", "&amp;");
+      html = html.replace("/</g", "&lt;");
+      html = html.replace("/>/g", "&gt;");
+      html = html.replace("/\"/g", "&quot;");
+      return html;
+    };
     function SendChat(a) {
         if (a.length > 200) {
             chatMessages.push({
@@ -575,6 +600,7 @@
         cachedFoodPos = [],
         qTree = null,
         leaderboard = [],
+        battlelog = [],
         leaderboardType = -1, // -1 - Not set, 48 - Text list, 49 - FFA list, 50 - Pie chart
         leaderboardCanvas = null,
         userScore = 0,
@@ -711,7 +737,9 @@
         showSkins: true,
         showMapGrid: true,
         showBorder: true,
+        showkills: true,
         darkTheme: true,
+        RenderAlpha: true,
         fastRenderMax: 0.4,
         quality: 'high',
         qualityRef: qualitySettings['high'],
@@ -737,7 +765,7 @@
                 wHandle.localStorage.setItem("checkbox-" + id, value);
             });
         });
-    }
+    };
 /*
     // Load known skin list
     wjQuery.ajax({
@@ -1340,16 +1368,13 @@
             newDrawZoom = _cZoom;
         }
         drawZoom += (newDrawZoom * viewMult * mouseZoom - drawZoom) * .11;
-    }
-
+    };
     function nodeSort(a, b) {
         return a.size === b.size ? a.id - b.id : a.size - b.size;
-    }
-
+    };
     function viewMultiplier() {
         return _viewMult;
-    }
-
+    };
     function Cell(id, x, y, size, name, color, skin, time, flags) {
         this.id = id;
         this.x = this.nx = x;
@@ -1601,9 +1626,12 @@
             mainCtx.lineCap = "round";
             mainCtx.lineJoin = jagged ? "miter" : "round";
 
-            fill.addColorStop(0, 'rgba(0,0,0,0.4)');
-            if(this.isPellet)
-                settings.darkTheme ? fill.addColorStop(0, 'rgba(0,0,0,0.6)') : fill.addColorStop(0, 'rgba(255,255,255,0.6)');
+            fill.addColorStop(0, '#000000');
+            if(settings.RenderAlpha) {
+                fill.addColorStop(0, 'rgba(0,0,0,0.4)');
+                if(this.isPellet)
+                    settings.darkTheme ? fill.addColorStop(0, 'rgba(0,0,0,0.6)') : fill.addColorStop(0, 'rgba(255,255,255,0.6)');
+            }
 
             fill.addColorStop(1, this.color);
 
@@ -1642,12 +1670,14 @@
                     if(this.isPellet && settings.qualityRef.smoothRender < 1.0) {
                         if (typeof(this.loop)=='undefined') {
                             // Lets wirl the food a little in an circle motion
-                            this.sp = Math.random() > 0.5 ? 1 : 2;
-                            this.ratio = (1 + Math.random()) * (Math.random() * 2 > 1 ? 1 :-1);
+                            this.sp = 3 - Math.ceil(this.size / 10);
+                            this.ratio = (1 + Math.random()) * (Math.random() * 2 > 1 ? 1 : -1);
                             this.loop=Math.floor(Math.random() * 360);
                         }
-                        mainCtx.shadowBlur = 5;
-                        mainCtx.shadowColor = this.color;
+                        if(settings.qualityRef.smoothRender < 0.4) {
+                            mainCtx.shadowBlur = 5;
+                            mainCtx.shadowColor = this.color;
+                        }
                         this.loop = (this.loop + this.sp) % 360;
                         mainCtx.drawImage(this._meCache, this.x - (this.size * 3) + (cachedFoodPos[this.loop * 2] * this.ratio), this.y - (this.size * 3) + (cachedFoodPos[(this.loop * 2) + 1] * (Math.abs(this.ratio))));
                     } else mainCtx.drawImage(this._meCache, this.x - this.size, this.y - this.size, this.size * 2, this.size * 2);
@@ -1677,7 +1707,7 @@
                 if (0 != loadedSkins[skin].width && loadedSkins[skin].complete) {
                     loadedSkins[skin].accessTime = Date.now();
                     mainCtx.save();
-                    mainCtx.globalAlpha=0.8;
+                    if(settings.RenderAlpha) mainCtx.globalAlpha=0.8;
                     mainCtx.clip();
                     mainCtx.drawImage(loadedSkins[skin], this.x - this.size, this.y - this.size, 2 * this.size, 2 * this.size);
                     mainCtx.restore();
@@ -1983,6 +2013,13 @@
     wHandle.setChatHide = function(a) {
         settings.showChat = a;
         drawChat();
+    };
+    wHandle.setDrawAlpha = function(a) {
+        settings.RenderAlpha = a;
+    };
+    wHandle.setKillsInfo = function(a) {
+        settings.showkills = a;
+        $('#livekills').html("");
     };
     wHandle.setTextOutline = function(a) {
         settings.showTextOutline = !a;
