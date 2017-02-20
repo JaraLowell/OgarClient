@@ -1,3 +1,12 @@
+$(function () {
+  $('#scores-table a:first').tab('show'),
+  $('#opener').on('click', function () {
+    var a = $('#slide-panel');
+    return a.hasClass('visible') ? ((a.removeClass('visible').animate({'margin-left': '-300px'}), $('#content').css({'margin-right': '0px'})),$('#news').fadeIn(500),$('#about').fadeIn(500)) :
+                                   ((a.addClass('visible').animate({'margin-left': '0px'}), $('#content').css({'margin-right': '-300px'})),$('#news').fadeOut(500),$('#about').fadeOut(500)),!1
+  })
+});
+
 (function(wHandle, wjQuery) {
     if (navigator.appVersion.indexOf("MSIE") != -1)
         alert("You're using a pretty old browser, some parts of the website might not work properly.");
@@ -25,9 +34,10 @@
         });
         $('#jversion').text( VERSION );
     });
+    // Edit the skin URL !!!
     var CONNECT_TO
-      , SKIN_URL = "./skins/"
-      , VERSION = "v7.0216"
+      , SKIN_URL = "http://google.com?/skins/"
+      , VERSION = "v7.0220"
       , USE_HTTPS = "https:" == wHandle.location.protocol
       , BORDER_DEFAULT = {top: -2E3, left: -2E3, right: 2E3, bottom: 2E3}
       , PI_2 = Math.PI * 2
@@ -127,10 +137,12 @@
         });
         lastMessageTime = Date.now();
         drawChat();
-        if(!settings.mobile) {
-            $('#nodes').show();
-            WsSend(SEND_104);
-        }
+        if ($('input#mmonoff').prop("checked"))
+            if (!settings.mobile) {
+                $('#nodes').fadeIn(500);
+                WsSend(SEND_104);
+                $('input#mmonoff').prop('checked', true);
+            } else $('input#mmonoff').prop('checked', false);
     };
     function WsMessage(data) {
         var reader = new Reader(new DataView(data.data), 0, true),
@@ -331,12 +343,16 @@
                     if (node.updateStamp !== time && node.birthStamp !== time) {
                         // Node is a pellet - draw cache
                         var _nCache = document.createElement('canvas');
-                        var pCtx = _nCache.getContext('2d'),
-                            lW = this.nSize > 20 ? Math.max(this.nSize * .01, 10) : 0, sz;
-                        _nCache.width = (sz = 2 + node.nSize + lW) * 2;
+                        var pCtx = _nCache.getContext('2d'), lW = this.nSize > 20 ? Math.max(this.nSize * .01, 10) : 0, sz, addmargin = 2;
+                        if (settings.qualityRef.smoothRender < 0.4) addmargin = 8;
+                        _nCache.width = (sz = (addmargin + node.nSize + lW)) * 2;
                         _nCache.height = sz * 2;
                         pCtx.lineWidth = lW;
                         pCtx.lineCap = pCtx.lineJoin = "round";
+                        if(settings.qualityRef.smoothRender < 0.4) {
+                            pCtx.shadowBlur = 3;
+                            pCtx.shadowColor = node.color;
+                        }
                         var fill = mainCtx.createRadialGradient(sz,sz,0,sz,sz, node.nSize - lW);
                         settings.darkTheme ? fill.addColorStop(0, 'rgba(0,0,0,0.6)') : fill.addColorStop(0, 'rgba(255,255,255,0.6)');
                         fill.addColorStop(1, node.color);
@@ -429,11 +445,6 @@
         writer.setUint8(0x00);
         writer.setStringUTF8(name);
         WsSend(writer);
-        if (null != wHandle.localStorage) {
-            // Lets store the skin value on sign in if it not same as stored value
-            var value = wHandle.localStorage.getItem("checkbox-50");
-            if( value != skin ) wHandle.localStorage.setItem("checkbox-50", skin);
-        }
         gamestart = Date.now();
     };
     function onTouchStart(e) {
@@ -757,16 +768,35 @@
             wjQuery(".save").each(function() {
                 var id = $(this).data("box-id");
                 var value = wHandle.localStorage.getItem("checkbox-" + id);
-                if (value && value == "true" && (0 != id || 50 != id)) {
+                if (value && value == "true" && (0 != id || 50 != id || 20 != id)) {
                     $(this).prop("checked", "true");
                     $(this).trigger("change");
-                } else if ((id == 0 || id == 50) && value != null) {
+                } else if ((id == 0 || id == 50 || id == 20) && value != null) {
+                    if(id == 50) {
+                        $('div#myviewskin').css('background-image', 'url("' + SKIN_URL + value + '.png")');
+                        $('div#myviewskin').fadeIn(1350);
+                    }
                     $(this).val(value);
+                    if(id == 20) applysettings(value);
+                } else if (value == null) {
+                    // Set Defaults
+                    if(id == 1)  { wHandle.localStorage.setItem("checkbox-1",  false); } // No Skins
+                    if(id == 2)  { wHandle.localStorage.setItem("checkbox-2",  false); } // No Names
+                    if(id == 3)  { wHandle.localStorage.setItem("checkbox-3",  true ); $(this).prop("checked", "true"); } // Dark Theme
+                    if(id == 4)  { wHandle.localStorage.setItem("checkbox-4",  false); } // No Colors
+                    if(id == 5)  { wHandle.localStorage.setItem("checkbox-5",  true ); $(this).prop("checked", "true"); } // Show Chat
+                    if(id == 6)  { wHandle.localStorage.setItem("checkbox-6",  true ); $(this).prop("checked", "true"); } // Smooth Render
+                    if(id == 7)  { wHandle.localStorage.setItem("checkbox-7",  true ); $(this).prop("checked", "true"); } // Border
+                    if(id == 8)  { wHandle.localStorage.setItem("checkbox-8",  true ); $(this).prop("checked", "true"); } // Map Grid
+                    if(id == 9)  { wHandle.localStorage.setItem("checkbox-9",  true ); $(this).prop("checked", "true"); } // Kill Info
+                    if(id == 10) { wHandle.localStorage.setItem("checkbox-10", true ); $(this).prop("checked", "true"); } // Alpha
+                    if(id == 11) { wHandle.localStorage.setItem("checkbox-11", true ); $(this).prop("checked", "true"); } // Mini Map
+                    if(id == 20) { wHandle.localStorage.setItem("checkbox-20", 3); }
                 }
             });
             wjQuery(".save").change(function() {
                 var id = $(this).data('box-id');
-                var value = (id == 0 || id == 50) ? $(this).val() : $(this).prop('checked');
+                var value = (id == 0 || id == 50 || id == 20) ? $(this).val() : $(this).prop('checked');
                 wHandle.localStorage.setItem("checkbox-" + id, value);
             });
         });
@@ -1404,6 +1434,7 @@
         size: 0,
         name: 0,
         color: "#FFFFFF",
+        colord: null,
         nameSkin: "",
         skin: "",
         updateStamp: -1,
@@ -1441,7 +1472,8 @@
             this.x += (this.nx - this.x) * dt;
             this.y += (this.ny - this.y) * dt;
             this.size += (this.nSize - this.size) * dt;
-            this._nameSize = ~~(Math.max(~~(.3 * this.nSize), 24) / 4) * 4;
+            this._nameSize = Math.max(~~(0.3 * this.nSize), 24);
+
         },
         setName: function(name) {
             var reg = /\{([\w]+)\}/.exec(name);
@@ -1521,16 +1553,6 @@
                 py = y + cos * sz;
 
                 var cx = 0, cy = 0;
-                // Point collision check (doesn't work)
-                /*if (qTree) {
-                    var id = this.id,
-                        dx, dy;
-                    qTree.retrieve2(cx, cy, 1, 1, function(a) {
-                        if (a.refID !== id && 25 > (cx - a.x) * (cx - a.x) + (cy - a.y) * (cy - a.y)) {
-                            console.log('collision')
-                        }
-                    });
-                }*/
                 px += cx;
                 py += cy;
 
@@ -1573,16 +1595,36 @@
             if (this.notPellet && !this.isVirus) {
                 mainCtx.save();
                 var nameDraw = settings.showNames && this.name !== "" && !this.isVirus;
-                if (nameDraw) drawText(this.x, this.y, this.name, this._nameSize, false);
+
+                var name = this.name, clan = null;
+                if (name.indexOf('[') != -1 && name.indexOf(']') != - 1) {
+                    var idx1 = name.indexOf('['),
+                        idx2 = 1 + name.indexOf(']'),
+                        clan = name.substring(idx1 + 1, idx2 - 1);
+                    if ( idx1 == 0 )
+                        name = name.substring(idx2);
+                    else
+                        name = name.substring(0, idx1);
+
+                    clan = clan.trim();
+                    name = name.trim();
+                }
+
+                if(this.colord == null) this.colord = ColorLuminance(this.color, 0.2);
+
+                if (nameDraw) {
+                    drawText(this.x, this.y, name, this._nameSize, false, this.color);
+                    if (clan != null) drawText(this.x, this.y - Math.max(this.size * .22, this._nameSize * .8), clan, this._nameSize * .5, false, this.colord);
+                }
 
                 if (settings.showMass && (myNodes.indexOf(this.id) !== -1 ||
                     (myNodes.length === 0 && settings.qualityRef.drawMassSpectate)) && this.size >= 20) {
 
                     var text = Math.ceil(this.size * this.size * .01).toString();
                     if (nameDraw)
-                        drawText(this.x, this.y + Math.max(this.size * .22, this._nameSize * .8), text, this._nameSize * .5, true);
+                        drawText(this.x, this.y + Math.max(this.size * .22, this._nameSize * .8), text, this._nameSize * .5, true, this.colord);
                     else
-                        drawText(this.x, this.y, text, this._nameSize * .5, true);
+                        drawText(this.x, this.y, text, this._nameSize * .5, true, this.colord);
                 }
                 mainCtx.restore();
             }
@@ -1625,17 +1667,14 @@
                 jagged = this.isVirus,
                 fill = mainCtx.createRadialGradient(this.x,this.y,0,this.x,this.y,this.size);
 
-            settings.darkTheme ? mainCtx.globalCompositeOperation = "lighter" : mainCtx.globalCompositeOperation = "darker";
-
             mainCtx.lineWidth = settings.qualityRef.cellOutline ? (this.isEjected ? 0 : this.size > 20 ? Math.max(this.size * .05, 10) : 0) : 0;
             mainCtx.lineCap = "round";
             mainCtx.lineJoin = jagged ? "miter" : "round";
 
             fill.addColorStop(0, 'rgba(0,0,0,0.6)');
             if(settings.RenderAlpha) {
+                settings.darkTheme ? mainCtx.globalCompositeOperation = "lighter" : mainCtx.globalCompositeOperation = "darker";
                 fill.addColorStop(0, 'rgba(0,0,0,0.4)');
-                if(this.isPellet)
-                    settings.darkTheme ? fill.addColorStop(0, 'rgba(0,0,0,0.6)') : fill.addColorStop(0, 'rgba(255,255,255,0.6)');
             }
 
             fill.addColorStop(1, this.color);
@@ -1666,11 +1705,12 @@
                 );
                 mainCtx.fill();
                 mainCtx.stroke();
-                if(!this.isPellet) this.drawSkin();
+                this.drawSkin();
                 mainCtx.closePath();
             } else {
                 this.rigidPoints = [];
                 if (this._meCache)
+                {
                     // Cached drawing exists - use it
                     if(this.isPellet && settings.qualityRef.smoothRender < 1.0) {
                         if (typeof(this.loop)=='undefined') {
@@ -1680,13 +1720,9 @@
                             this.loop=Math.floor(Math.random() * 360);
                         }
                         this.loop = (this.loop + this.sp) % 360;
-                        if(settings.qualityRef.smoothRender < 0.4) {
-                            mainCtx.shadowBlur = 5;
-                            mainCtx.shadowColor = this.color;
-                        }
-                        mainCtx.drawImage(this._meCache, this.x - (this.size * 3) + (cachedFoodPos[this.loop * 2] * this.ratio), this.y - (this.size * 3) + (cachedFoodPos[(this.loop * 2) + 1] * (Math.abs(this.ratio))));
+                        mainCtx.drawImage(this._meCache, (this.x - (this.size * 2)) + (cachedFoodPos[this.loop * 2] * this.ratio), (this.y - (this.size * 2)) + (cachedFoodPos[(this.loop * 2) + 1] * (Math.abs(this.ratio))));
                     } else mainCtx.drawImage(this._meCache, this.x - this.size, this.y - this.size, this.size * 2, this.size * 2);
-                else {
+                } else {
                     mainCtx.beginPath();
                     mainCtx.arc(this.x, this.y, Math.abs(this.size - mainCtx.lineWidth * 0.5) + 0.5, 0, PI_2, false);
                     mainCtx.fill();
@@ -1712,6 +1748,7 @@
                 if (0 != loadedSkins[skin].width && loadedSkins[skin].complete) {
                     loadedSkins[skin].accessTime = Date.now();
                     mainCtx.save();
+
                     if(settings.RenderAlpha) mainCtx.globalAlpha=0.8;
                     mainCtx.clip();
                     mainCtx.drawImage(loadedSkins[skin], this.x - this.size, this.y - this.size, 2 * this.size, 2 * this.size);
@@ -1719,6 +1756,23 @@
                 }
             }
         }
+    };
+    function ColorLuminance(hex, lum) {
+        // validate hex string
+        hex = String(hex).replace(/[^0-9a-f]/gi, '');
+        if (hex.length < 6) {
+            hex = hex[0]+hex[0]+hex[1]+hex[1]+hex[2]+hex[2];
+        }
+        lum = lum || 0;
+
+        // convert to decimal and change luminosity
+        var rgb = "#", c, i;
+        for (i = 0; i < 3; i++) {
+            c = parseInt(hex.substr(i*2,2), 16);
+            c = Math.round(Math.min(Math.max(0, c + (c * lum)), 255)).toString(16);
+            rgb += ("00"+c).substr(c.length);
+        }
+        return rgb;
     };
     function toleranceCompare(a, b, t) {
         var d = a - b;
@@ -1781,79 +1835,38 @@
             }
         }
     };
-    function newTextCache(value, size) {
+    function newTextCache(value, fontsize, color) {
+        if(color == '' || color == null) color = "#FFFFFF";
         var canvas = document.createElement('canvas'),
             ctx = canvas.getContext('2d'),
-            lineWidth = settings.showTextOutline ? settings.qualityRef.getTextLineWidth(size) : 0;
+            lineWidth = settings.showTextOutline ? settings.qualityRef.getTextLineWidth(fontsize) : 0;
 
-        ctx.font = size + 'px Ubuntu';
+        ctx.font = fontsize + 'px Ubuntu';
         canvas.width = (lineWidth * 2) + ctx.measureText(value).width;
-        canvas.height = size * 1.3;
-        ctx.font = size + 'px Ubuntu';
-        ctx.fillStyle = "#FFFFFF";
+        canvas.height = fontsize * 1.3;
 
+        ctx.font = fontsize + 'px Ubuntu';
+        ctx.fillStyle = color;
         if(settings.showTextOutline && lineWidth > 0) {
-            if(lineWidth > 3) {
+            ctx.lineWidth = lineWidth * 0.75;
+            ctx.strokeStyle = "#000000";
+            if(lineWidth > 0) {
                 ctx.shadowColor = "#000000";
                 ctx.shadowBlur = lineWidth;
             }
-            ctx.lineWidth = lineWidth / 2;
-            ctx.strokeStyle = "#000000";
-            ctx.strokeText(value, lineWidth, size);
+            ctx.strokeText(value, lineWidth, fontsize);
         }
-
-        ctx.fillText(value, lineWidth, size);
+        ctx.fillText(value, lineWidth, fontsize);
 
         (!textCache[value]) && (textCache[value] = { });
-        textCache[value][size] = {
+        textCache[value][fontsize] = {
             canvas: canvas,
             accessTime: Date.now()
         };
         return canvas;
     };
-    function newMassCache(size) {
-        var temp;
-        var canvasList = [
-                { c: (temp = document.createElement('canvas')), t: temp.getContext('2d'), w: NaN }, // 0
-                { c: (temp = document.createElement('canvas')), t: temp.getContext('2d'), w: NaN }, // 1
-                { c: (temp = document.createElement('canvas')), t: temp.getContext('2d'), w: NaN }, // 2
-                { c: (temp = document.createElement('canvas')), t: temp.getContext('2d'), w: NaN }, // 3
-                { c: (temp = document.createElement('canvas')), t: temp.getContext('2d'), w: NaN }, // 4
-                { c: (temp = document.createElement('canvas')), t: temp.getContext('2d'), w: NaN }, // 5
-                { c: (temp = document.createElement('canvas')), t: temp.getContext('2d'), w: NaN }, // 6
-                { c: (temp = document.createElement('canvas')), t: temp.getContext('2d'), w: NaN }, // 7
-                { c: (temp = document.createElement('canvas')), t: temp.getContext('2d'), w: NaN }, // 8
-                { c: (temp = document.createElement('canvas')), t: temp.getContext('2d'), w: NaN }, // 9
-            ],
-            i = 0,
-            lineWidth = settings.showTextOutline ? settings.qualityRef.getTextLineWidth(size) : 0,
-            ctx, canvas, height = size + lineWidth * 5 + 2;
-
-        for ( ; i < 10; i++) {
-            canvas = canvasList[i].c;
-            ctx = canvasList[i].t;
-            ctx.font = size + 'px Ubuntu';
-            canvasList[i].w = (canvas.width = ctx.measureText(i).width + lineWidth * 3) - lineWidth * 3;
-            canvas.height = height;
-            ctx.font = size + 'px Ubuntu';
-            ctx.fillStyle = lineWidth === 0 && !settings.showColor ? "#000000" : "#FFFFFF";
-            ctx.lineWidth = lineWidth;
-            ctx.strokeStyle = "#000000";
-
-            (lineWidth > 0) && ctx.strokeText(i, lineWidth, size);
-            ctx.fillText(i, lineWidth, size);
-        }
-
-        massCache[size] = {
-            canvasList: canvasList,
-            height: height,
-            accessTime: Date.now()
-        };
-
-        return massCache[size];
-    };
-    function findTextMatch(value, size) {
-        if (!textCache[value]) return newTextCache(value, size); // No text with equal string
+    function findTextMatch(value, size, color) {
+        if (!textCache[value]) return newTextCache(value, size, color); // No text with equal string
 
         var tolerance = ~~(size * .1),
             b;
@@ -1879,61 +1892,33 @@
         }
 
         // No match
-        return newTextCache(value, size);
+        return newTextCache(value, size, color);
     };
-    function findMassMatch(size) {
-        if (massCache[size]) {
-            massCache[size].accessTime = Date.now();
-            return massCache[size];
-        }
-
-        var b, tolerance = ~~(size * .1), i = 0;
-
-        // Identical search way as with text
-        for ( ; i < tolerance; i++) {
-            // Smaller than requested mass sizes are favored now
-            if ((b = massCache[size - i])) {
-                b.accessTime = Date.now();
-                return b;
-            }
-            if ((b = massCache[size + i])) {
-                b.accessTime = Date.now();
-                return b;
-            }
-        }
-
-        // No match
-        return newMassCache(size);
-    };
-    function drawText(x, y, value, size, isMass) {
+    function drawText(x, y, value, size, tmass, color) {
         if (size > 5000) return; // Integrity check
 
         var identical;
-        if (isMass) {
-            identical = findMassMatch(size);
-            var str = value.toString(),
-                maxW = 0, nowW = 0,
-                i = 0,
-                currentNumber;
-            y -= identical.height * .5;
-
-            // Measure half-width
-            for ( ; i < str.length; i++)
-                maxW += identical.canvasList[parseInt(str[i])].w;
-            x -= maxW * .5;
-
-            // Draw char by char
-            for (i = 0; i < str.length; i++) {
-                currentNumber = identical.canvasList[parseInt(str[i])];
-                mainCtx.drawImage(currentNumber.c, x, y);
-                x += currentNumber.w;
-            }
-        } else {
-            identical = findTextMatch(value, size),
+        if(!tmass) {
+            var identical = findTextMatch(value, size, color),
                 w = identical.width,
                 h = identical.height;
-
             mainCtx.drawImage(identical, x - w * .5, y - h * .5, w, h);
+        } else {
+            var lineWidth = settings.showTextOutline ? settings.qualityRef.getTextLineWidth(size) : 0;
+            mainCtx.font = size + 'px Ubuntu';
+            mainCtx.fillStyle = "#FFFFFF";
+            var linestart = ((lineWidth * 2) + mainCtx.measureText(value).width) / 2;
+            mainCtx.globalAlpha=0.7;
+            if(settings.showTextOutline && lineWidth > 0) {
+                if(lineWidth > 0) {
+                    mainCtx.shadowColor = "#000000";
+                    mainCtx.shadowBlur = lineWidth * 2;
+                }
+                mainCtx.lineWidth = lineWidth / 2;
+                mainCtx.strokeStyle = "#000000";
+                mainCtx.strokeText(value, x - linestart, y + size);
+            }
+            mainCtx.fillText(value, x - linestart, y + size);
         }
     };
     function buildQTree() {
@@ -1978,6 +1963,22 @@
             }
         }
     };
+    function applysettings(a) {
+        var b = 'retina';
+        if (a == 0) b = 'mobile';
+        if (a == 1) b = 'low';
+        if (a == 2) b = 'medium';
+        if (a == 3) b = 'high';
+        $('#range').text(b);
+        if (qualitySettings[b] && settings.quality !== b) {
+            settings.quality = b;
+            settings.qualityRef = qualitySettings[b];
+            settings.fastRenderMax = settings.fastRenderMax < 0.3 ? 0.3 : settings.qualityRef.smoothRender;
+            textCache = { };
+            massCache = { };
+
+        }
+    }
     wHandle.setserver = function(arg) {
         if (CONNECT_TO != arg) {
             Disconnect();
@@ -2012,8 +2013,21 @@
         settings.showNames = a;
         drawLeaderboard();
     };
+    wHandle.setSkin = function(a) {
+        var value = wHandle.localStorage.getItem("checkbox-50");
+        if (value != a) {
+            wHandle.localStorage.setItem("checkbox-50", a);
+            $('div#myviewskin').css('background-image', 'url("' + SKIN_URL + a + '.png")');
+            $('div#myviewskin').fadeIn(1350);
+            $('#myskin').val(a);
+        }
+    }
     wHandle.setSmooth = function(a) {
         settings.fastRenderMax = a ? 0.4 : settings.qualityRef.smoothRender;
+    };
+    wHandle.setMiniMap = function(a) {
+        a ? $('#nodes').fadeIn(500) : $('#nodes').fadeOut(500);
+        WsSend(new Uint8Array([104, a, 0, 0, 0]));
     };
     wHandle.setChatHide = function(a) {
         settings.showChat = a;
@@ -2032,19 +2046,8 @@
         massCache = { };
     };
     wHandle.setQuality = function(a) {
-        var b = 'retina';
-        if (a == 0) b = 'mobile';
-        if (a == 1) b = 'low';
-        if (a == 2) b = 'medium';
-        if (a == 3) b = 'high';
-        $('#range').text(b);
-        if (qualitySettings[b] && settings.quality !== b) {
-            settings.quality = b;
-            settings.qualityRef = qualitySettings[b];
-            settings.fastRenderMax = settings.fastRenderMax < 0.3 ? 0.3 : settings.qualityRef.smoothRender;
-            textCache = { };
-            massCache = { };
-        }
+        applysettings(a);
+        wHandle.localStorage.setItem("checkbox-20", a);
     };
     wHandle.closeStats = function (w) {
         $('#advert').hide();
@@ -2062,7 +2065,7 @@
     wHandle.openSkinsList = function() {
         if ($('#inPageModalTitle').text() != "Skins") {
             $.get('include/gallery.php').then(function(data) {
-                $('#inPageModalTitle').text("Skins");
+                $('#inPageModalTitle').text("Skins - Click one to sellect it as yours");
                 $('#inPageModalBody').html(data);
             });
         }

@@ -5,6 +5,7 @@ body {
     overflow: hidden;
     font-family: Ubuntu;
     background-color: #000000;
+    /* background: url("/img/background_tile_2.jpg"); */
     background-size: cover;
 }
 hr {
@@ -17,7 +18,15 @@ b, strong {
     font-weight: 700;
     color: rgba(51, 122, 183, 0.8);
 }
+h3 {
+    margin-top: 5px;
+    margin-bottom: 2px;
+}
 /* IDs */
+#clock {
+    font-size: 12px;
+    color: #777;
+}
 #overlays {
     display:none;
     position: absolute;
@@ -25,8 +34,11 @@ b, strong {
     right: 0;
     top: 0;
     bottom: 0;
-    background-color: rgba(16, 20, 33, 0.88);
+    /* background-color: rgba(16, 20, 33, 0.88); */
     z-index: 200;
+
+    opacity: 0.92;
+    background: rgba(0, 0, 0, 0.8) url("../img/newbg.jpg") no-repeat scroll 0% 0% / 100% 100%;
 }
 #title {
     color: #428BCA;
@@ -54,10 +66,12 @@ b, strong {
 #nick {
     width: 65%;
     float: left;
+    background-color: rgba(255,255,255,0.65);
 }
 #gamemode {
     width: 33%;
     float: right;
+    background-color: rgba(255,255,255,0.65);
 }
 #advert {
     display:none;
@@ -69,6 +83,7 @@ b, strong {
     background-color: rgba(0,0,0,0.5);
     z-index: 300;
 }
+
 #livekills {
     display: block;
     z-index: 3;
@@ -173,7 +188,7 @@ b, strong {
     top: 24px;
     right: 24px
 }
-#helloDialog, #scorebox, #news, #about {
+#helloDialog, #scorebox, #news, #about, #myviewskin {
     width: 360px;
     height: 600px;
     background: rgba(9, 13, 23, 0.91) url('../img/bg_sidebar.gif') repeat scroll left top;
@@ -189,7 +204,51 @@ b, strong {
     line-height: 1;
     border-radius: 7px;
     border: 1px solid rgba(36, 51, 66, 0.9);
-    box-shadow: 0px 0px 10px rgba(36, 51, 66, 0.9);
+    box-shadow: 0px 0px 9px rgb(36, 51, 66);
+}
+#myviewskin {
+    opacity: 0.7;
+    z-index: -1;
+    position: absolute;
+    width: 110px;
+    height: 110px;
+    top: 62px;
+    left: 62px;
+    background-repeat: no-repeat;
+    border-radius: 50%;
+    background-size: 100% 100%;
+    background-color: rgba(36, 51, 66, 0.9);
+    box-shadow: 0px 0px 9px rgb(131, 177, 224);
+}
+/* Side Pannel */
+#slide-panel {
+    height: 490px;
+    background: rgba(9, 13, 23, 0.91) url("../img/bg_sidebar.gif") repeat scroll left top;
+    margin-left: -300px;
+    line-height: 1.3;
+    float: left;
+    position: absolute;
+    z-index: 300;
+    top: 130px;
+    border-bottom-right-radius: 7px;
+    border-top-right-radius: 7px;
+    border: 1px solid rgba(36, 51, 66, 0.9);
+    box-shadow: 0px 0px 9px rgb(36, 51, 66);
+}
+#slide-panel {
+    width: 292px;
+    padding: 10px;
+    max-width: 300px;
+}
+#opener {
+    float: right;
+    background: rgb(9, 13, 23) url("../img/bg_sidebar.gif") repeat scroll left top;
+    margin: 38px -61px 0 0;
+    border-radius: 0 8px 8px 0;
+    border-top: 1px solid rgba(36, 51, 66, 0.9);
+    border-right: 1px solid rgba(36, 51, 66, 0.9);
+    border-bottom: 1px solid rgba(36, 51, 66, 0.9);
+    outline:none;
 }
 #chat_textbox {
     -webkit-transition: all .5s ease-in-out;
@@ -220,17 +279,22 @@ b, strong {
 #play-btn {
     width: 85%;
     float: left;
+    outline: none;
 }
 #settings-btn {
     width: 13%;
     float: right;
     background-color: #13b11f;
     border: 1px #098213;
+    outline: none;
 }
 #spectate-btn {
     margin-top: -5px;
+    outline: none;
 }
-
+#rank_today, #rank_all {
+    outline: none;
+}
 /* CLASSES */
 .checkbox label {
     margin-right: 10px;

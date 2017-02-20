@@ -14,7 +14,7 @@ error_reporting(0);
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="description" content="Eat cells smaller than you and don't get eaten by the bigger ones, as an MMO">
-    <meta name="keywords" content="agario, agar, io, cell, cells, virus, bacteria, blob, game, games, web game, html5, fun, flash">
+    <meta name="keywords" content="agario, agar, io, cell, cells, virus, bacteria, blob, game, games, web game, html5, fun, canvas">
     <meta name="robots" content="index, follow">
     <meta name="viewport" content="minimal-ui, width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta name="apple-mobile-web-app-capable" content="yes">
@@ -34,6 +34,7 @@ error_reporting(0);
     <script src="js/gameclient.js"></script>
     <script src="js/shw14.js"></script>
     <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.4/js/bootstrap.min.js"></script>
+    <script async src="//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
 </head>
 
 <body>
@@ -98,28 +99,30 @@ if( $serverip != '' )
                         <br clear="both" />
                     </div>
                     <div style="margin: 6px; width: 95%;">
+                        <input type="hidden" class="save" data-box-id="6" onchange="setSmooth($(this).is(':checked'));">
                         <label style="width:45%">
                             <input type="checkbox" class="save" data-box-id="1" onchange="setSkins(!$(this).is(':checked'));"> No skins</label>
                         <label style="width:45%">
                             <input type="checkbox" class="save" data-box-id="2" onchange="setNames(!$(this).is(':checked'));"> No names</label>
                         <label style="width:45%">
-                            <input type="checkbox" class="save" data-box-id="3" onchange="setDarkTheme($(this).is(':checked'));" checked> Dark Theme</label>
+                            <input type="checkbox" class="save" data-box-id="3" onchange="setDarkTheme($(this).is(':checked'));"> Dark Theme</label>
                         <label style="width:45%">
                             <input type="checkbox" class="save" data-box-id="4" onchange="setColors($(this).is(':checked'));"> No colors</label>
                         <label style="width:45%">
-                            <input type="checkbox" class="save" data-box-id="5" onchange="setChatHide($(this).is(':checked'));" checked> Show Chat</label>
+                            <input type="checkbox" class="save" data-box-id="5" onchange="setChatHide($(this).is(':checked'));"> Show Chat</label>
                         <label style="width:45%">
-                            <input type="checkbox" class="save" data-box-id="6" onchange="setSmooth($(this).is(':checked'));" checked> Smooth FPS</label>
+                            <input type="checkbox" id="mmonoff" class="save" data-box-id="11" onchange="setMiniMap($(this).is(':checked'));"> Minimap</label>
                         <label style="width:45%">
-                            <input type="checkbox" class="save" data-box-id="7" onchange="setBorder($(this).is(':checked'));" checked> Border</label>
+                            <input type="checkbox" class="save" data-box-id="7" onchange="setBorder($(this).is(':checked'));"> Border</label>
                         <label style="width:45%">
-                            <input type="checkbox" class="save" data-box-id="8" onchange="setMapGrid($(this).is(':checked'));" checked> Map Grid</label>
+                            <input type="checkbox" class="save" data-box-id="8" onchange="setMapGrid($(this).is(':checked'));"> Map Grid</label>
                         <label style="width:45%">
-                            <input type="checkbox" class="save" data-box-id="9" onchange="setKillsInfo($(this).is(':checked'));" checked> Kill Info</label>
+                            <input type="checkbox" class="save" data-box-id="9" onchange="setKillsInfo($(this).is(':checked'));"> Kill Info</label>
                         <label style="width:45%">
-                            <input type="checkbox" class="save" data-box-id="10" onchange="setDrawAlpha($(this).is(':checked'));" checked> Cells Alpha</label>
+                            <input type="checkbox" class="save" data-box-id="10" onchange="setDrawAlpha($(this).is(':checked'));"> Cells Alpha</label>
                         <label style="width:95%">
-                            <br>Draw quality <span id="range">high</span><input type="range" min="0" max="4" value="3" step="1" onchange="setQuality($(this).val())"></label>
+                            <br>Draw quality <span id="range">high</span>
+                            <input type="range" class="save" data-box-id="20" min="0" max="4" value="3" step="1" onchange="setQuality($(this).val());"></label>
                     </div>
                 </div>
             </form>
@@ -140,6 +143,26 @@ if( $serverip != '' )
                 </center>
             </div>
             <hr/>
+            <!-- // Your ADD Window use 320x100 ass add size // -->
+            <div class="form-group" style="height: 100px; width: 320px;margin: 0px 3.5px;text-align: center;">
+<?php
+
+// PUT YOUR Google ADDS code here use the 320x100 sized add banner
+// Example (from ogar.mivabe.nl)
+echo '
+                <!-- Smaller Add -->
+                <ins class="adsbygoogle"
+                     style="display:inline-block;width:320px;height:100px"
+                     data-ad-client="ca-pub-4992689184235190"
+                     data-ad-slot="4031234669"></ins>
+                <script>
+                    (adsbygoogle = window.adsbygoogle || []).push({});
+                </script>
+';
+
+?>
+            </div>
+            <br>
             <span id="jversion" class="footer"></span>
 
             <!-- // Gameplay Window // -->
@@ -158,17 +181,21 @@ if( $serverip != '' )
                 <div class="form-group">
                     <div class="form-group" style="text-align: center;"><h2 id="title">News</h2></div>
                     <div class="form-group">
-                        <span class="text-muted"><font style="font-size:0.9em">Master Server is Live!, visit it here at <a href="http://ogar.mivabe.nl/master" target="_blank">Ogar Tracker</a><br>
+                        <span class="text-muted"><font style="font-size:0.9em">Master Server is Live!, visit it here at <a href="http://ogar.mivabe.nl/master" target="_blank">Ogar Tracker</a>
+                        <br><hr>
+                        This is the new client!, using a newer protocol.<br><br>This was done to lower bandwith and making gaming expiriance more fun for all.<br><br>Also a working minimap and the grid in the background now shows the region as seen in minimap as well. You can turn these on or off in the setting pannel.<br><br>Overall theme re done to an darker looking theme and less bright white backgrounds.
+                        <br><hr>
+                        Player High scores can be found on the left in the <img src="http://ogar.mivabe.nl/prot6/img/str.png" height="12px" style="vertical-align: top;"> slide panel. There are today scores and all time scores saved.
                         <br><hr>
                         This client needs OgarServ version 1.7 or higher, you can get the server on <a href="https://github.com/JaraLowell/OgarServ" target="_blank">GitHub</a>
                         <br><hr>
-                        We now have version 7.0215 live, we updated some things in this, when now sellecting a lower quality the skin images will also will degrade, or more we disable image smoothing this is by default on but now with slider it can be turned off for more FPS.
+                        See screen shots from players <a href="http://ogar.mivabe.nl/photos" target="_blank">here</a>, only active for five days.
                         </font></span>
                     </div>
                 </div>
                 <br clear="all">
             </div>
-
+            <div id="myviewskin" class="form-group" style="background-image: url('../skins/default.png');display:none;"></div>
         </div>
     </div>
 
@@ -179,9 +206,17 @@ if( $serverip != '' )
         </div>
     </div>
 
+    <!-- // High Score Bar // -->
+    <div id="slide-panel" style="color:white">
+        <a href="#" class="btn" id="opener"><img src="img/str.png" width="25" height="25" /></a>
+        <div class="tab-content" id="scores" style="background: transparent;">
+        </div>
+    </div>
+
+
     <!-- // Advertizment Area when you die // -->
     <div id="advert">
-        <div id="scorebox" style="height:380px">
+        <div id="scorebox" style="height:500px">
             <div id="stats" style="width: 100%; height: 230px; padding: 0px 0px 300px; overflow: hidden;" class="agario-panel">
                 <canvas height="230" width="320" id="statsGraph"></canvas>
                 <div id="statsHighestMassContainer"><span id="statsTextMass" class="stats-highest-mass"></span><span id="statsSubtext" data-itr="stats_highest_mass">Highest mass</span></div>
@@ -194,6 +229,26 @@ if( $serverip != '' )
             <center>
                 <button id="statsContinue" class="btn btn-primary" data-itr="continue" onclick="closeStats();" style="opacity: 0.85;">Continue</button>
             </center>
+            <hr/>
+            <!-- // Your ADD Window use 320x100 ass add size // -->
+            <div class="form-group" style="height: 100px; width: 320px;margin: 0px 3.5px;text-align: center;">
+<?php
+
+// PUT YOUR Google ADDS code here use the 320x100 sized add banner
+// Example (from ogar.mivabe.nl)
+echo '
+                <!-- Smaller Add -->
+                <ins class="adsbygoogle"
+                     style="display:inline-block;width:320px;height:100px"
+                     data-ad-client="ca-pub-4992689184235190"
+                     data-ad-slot="4031234669"></ins>
+                <script>
+                    (adsbygoogle = window.adsbygoogle || []).push({});
+                </script>
+';
+
+?>
+            </div>
         </div>
     </div>
 
@@ -224,6 +279,14 @@ $(document).on('keyup',function(e){
         return;
     }
 });
+</script>
+<script type='text/javascript' charset='utf-8'>
+    $(document).ready(function(){
+        $('#scores').load('highscores.php').fadeIn(750);
+    });
+    var refreshId = setInterval( function() {
+        $('#scores').fadeOut('slow').load('highscores.php').slideDown(1500);
+    } , 150000);
 </script>
 </body>
 </html>
