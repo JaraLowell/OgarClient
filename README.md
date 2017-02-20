@@ -8,7 +8,8 @@ Live working demo @ http://ogar.mivabe.nl
 
 ## Project Info
 ![Language](https://img.shields.io/badge/language-Java-yellow.svg)
-![Language](https://img.shields.io/badge/language-PHP-orange.svg)
+![Language](https://img.shields.io/badge/language-PHP-4F5D95.svg)
+![Language](https://img.shields.io/badge/language-CSS-563d7c.svg)
 ![Language](https://img.shields.io/badge/language-MySQL-red.svg)
 [![License](https://img.shields.io/badge/license-APACHE2-blue.svg)](https://github.com/JaraLowell/OgarServ/blob/OgarServer/LICENSE)
 
