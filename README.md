@@ -4,7 +4,13 @@ An Simple client compatible with https://github.com/JaraLowell/OgarServ
 Created from a fork from https://github.com/Luka967/Cigar
 
 We added a few things and support now to the minimap package
-Live working demo @ http://ogar.mivabe.nl/prot6/
+Live working demo @ http://ogar.mivabe.nl
+
+## Project Info
+![Language](https://img.shields.io/badge/language-Java-yellow.svg)
+![Language](https://img.shields.io/badge/language-PHP-orange.svg)
+![Language](https://img.shields.io/badge/language-MySQL-red.svg)
+[![License](https://img.shields.io/badge/license-APACHE2-blue.svg)](https://github.com/JaraLowell/OgarServ/blob/OgarServer/LICENSE)
 
 # The files YOU need to edit:
 ### index.php
@@ -25,3 +31,5 @@ in here you will have to set the skins directory example: /usr/local/www/skins/ 
 the gallery can scan them.
 
 # Good Luck!
+## Ask Questions and or sugestions
+[Join us on Skype group by clicking this!](https://join.skype.com/bWtHKFC5DhTt)
