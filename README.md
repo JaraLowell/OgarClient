@@ -21,9 +21,9 @@ You will need to remove, or use your own ad code from Google AdSense, best ad to
 ### highscores.php
 in here you need to set the MySQL info 
 
-if you wish to use MaxMind GeoIP2 Databases you will need to get those as well. The php files you can find at https://github.com/maxmind/geoip-api-php 
+if you wish to use MaxMind GeoIP2 Databases you will need to get those as well. The php files you can find at https://github.com/maxmind/geoip-api-php if i remeber correct you only need to get [geoip.inc](https://raw.githubusercontent.com/maxmind/geoip-api-php/master/src/geoip.inc), [geoipcity.inc](https://raw.githubusercontent.com/maxmind/geoip-api-php/master/src/geoipcity.inc), [geoipregionvars.php](https://raw.githubusercontent.com/maxmind/geoip-api-php/master/src/geoipregionvars.php) and [timezone.php](https://raw.githubusercontent.com/maxmind/geoip-api-php/master/src/timezone.php)
 
-the dat file is located at http://geolite.maxmind.com/download/geoip/database/GeoLiteCity.dat.gz
+the [GeoLiteCity.dat.gz](http://geolite.maxmind.com/download/geoip/database/GeoLiteCity.dat.gz) file is located at MaxMind. you will need unpack it `gzip -d GeoLiteCity.dat.gz`
 
 For both files it advicable to have them in there own folder not inside the root folder of the game client.
 
